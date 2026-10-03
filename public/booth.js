@@ -270,5 +270,13 @@ $('#retry').addEventListener('click', send);
 
 (async () => {
   await loadConfig();
-  if (await startCamera()) show('welcome');
+  if (!(await startCamera())) return;
+  // "Start recording" in the gallery comes back here and goes straight to the countdown.
+  if (new URLSearchParams(location.search).has('start')) {
+    history.replaceState(null, '', '/');
+    keepAwake();
+    countdown();
+  } else {
+    show('welcome');
+  }
 })();
