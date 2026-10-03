@@ -21,7 +21,7 @@
       <div class="rule"></div>
       <p class="small" data-text="date"></p>
       <button class="btn" id="start">Start recording</button>
-      <a class="link" href="/gallery/">Watch the wishes</a>
+      <button class="link" id="watch">Watch the wishes</button>
     </div>
   </section>
 
@@ -71,6 +71,10 @@
       <button class="btn" onclick="location.reload()">Try again</button>
     </div>
   </section>
+
+  <!-- The gallery opens inside this page so the tablet stays full screen
+       and the camera stays on. -->
+  <iframe id="gallery" class="gallery-frame" title="Wishes" allow="autoplay; fullscreen" allowfullscreen hidden></iframe>
 
   <script src="/booth.js"></script>
 </body>

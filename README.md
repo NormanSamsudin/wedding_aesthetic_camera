@@ -74,7 +74,6 @@ To keep the videos, copy the `wishes/` folder from the laptop.
 - Videos are recorded as MP4 when the browser supports it (iPads and recent Chrome), which plays everywhere. Older Android Chrome records WebM, which plays in Chrome, Edge and Firefox but not Safari.
 - If a save fails (for example the wifi drops), the guest sees **Try again** and the recording is kept, so they don't have to record again.
 - The booth goes back to the welcome screen if a guest leaves the review screen for a minute, and after each thank-you screen.
-- Guests can tap **Watch the wishes** on the booth's welcome screen to browse the gallery, and **Start recording** to go straight back into the countdown. The gallery returns to the booth by itself after two minutes without a touch (unless a wish is playing).
-- On an iPad, set **Settings › Apps › Safari › Camera** and **Microphone** to *Allow* so Safari doesn't ask again each time a guest comes back from the gallery.
+- Guests can tap **Watch the wishes** on the booth's welcome screen to browse the gallery, and **Start recording** to go straight back into the countdown. The gallery opens inside the booth page, so the tablet stays full screen and the camera stays on. It returns to the booth by itself after two minutes without a touch (unless a wish is playing).
 - Gallery sessions: Morning 5 am to 12 pm, Afternoon 12 pm to 5 pm, Evening 5 pm to 9 pm, Night 9 pm to 5 am (a 1 am wish counts as the night before). Change them in `SESSIONS` at the top of `public/gallery/gallery.js`.
 - `wishes/` and `certs/` are in `.gitignore`, so guest videos and your private key are never committed.

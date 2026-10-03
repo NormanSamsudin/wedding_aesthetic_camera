@@ -288,6 +288,17 @@ async function start() {
   }
 }
 
+// Normally the gallery is shown inside the booth page (so the tablet stays
+// full screen); if it was opened on its own, navigate instead.
+function backToBooth(startRecording) {
+  if (window.parent !== window && window.parent.closeGallery) window.parent.closeGallery(startRecording);
+  else location.href = startRecording ? '/?start=1' : '/';
+}
+$('.to-booth').addEventListener('click', (e) => {
+  e.preventDefault();
+  backToBooth(true);
+});
+
 // The gallery lives on the booth tablet, so go back to the booth by itself
 // when guests walk away (unless a wish is playing).
 let boothTimer = null;
@@ -295,7 +306,7 @@ function backSoon() {
   clearTimeout(boothTimer);
   boothTimer = setTimeout(() => {
     const v = $('#player-video');
-    if ($('#player').hidden || v.paused || v.ended) location.href = '/';
+    if ($('#player').hidden || v.paused || v.ended) backToBooth(false);
     else backSoon();
   }, BOOTH_IDLE_MS);
 }

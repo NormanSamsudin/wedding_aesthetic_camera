@@ -243,11 +243,35 @@ function thanks() {
 
 // ---------- wiring ----------
 
-$('#start').addEventListener('click', () => {
+function goFullscreen() {
   keepAwake();
-  document.documentElement.requestFullscreen?.().catch(() => {});
+  const el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
+  // Older iPad Safari only has the webkit-prefixed version.
+  if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  else el.webkitRequestFullscreen?.();
+}
+$('#start').addEventListener('click', () => {
+  goFullscreen();
   countdown();
 });
+
+// ---------- gallery ----------
+
+$('#watch').addEventListener('click', () => {
+  goFullscreen();
+  $('#gallery').src = '/gallery/';
+  $('#gallery').hidden = false;
+});
+
+// Called by the gallery's "Start recording" button and its idle timer.
+window.closeGallery = (startRecording) => {
+  const frame = $('#gallery');
+  frame.hidden = true;
+  frame.src = 'about:blank';
+  if (startRecording) countdown();
+  else show('welcome');
+};
 $('#stop').addEventListener('click', stopRecording);
 $('#play').addEventListener('click', () => {
   $('#play').hidden = true;
