@@ -4,9 +4,6 @@ const $ = (sel) => document.querySelector(sel);
 const REFRESH_MS = 15_000;
 const NEW_FOR_MS = 15 * 60_000;
 const BOOTH_IDLE_MS = 2 * 60_000;
-// Opened from the booth tablet: show a way back, hide downloads, and return
-// to the booth by itself if guests walk away.
-const fromBooth = new URLSearchParams(location.search).get('from') === 'booth';
 
 let wishes = []; // newest first
 
@@ -203,8 +200,6 @@ function playAt(i) {
   v.src = media(w.video);
   v.play().catch(() => {});
   $('#player-name').textContent = when(w);
-  $('#player-download').href = media(w.video);
-  $('#player-download').setAttribute('download', w.video);
   $('#prev').disabled = pos === 0;
   $('#next').disabled = pos === queue.length - 1;
 
@@ -293,22 +288,19 @@ async function start() {
   }
 }
 
-if (fromBooth) {
-  $('#to-booth').hidden = false;
-  $('#download-all').hidden = true;
-  $('#player-download').hidden = true;
-  let boothTimer = null;
-  const backSoon = () => {
-    clearTimeout(boothTimer);
-    boothTimer = setTimeout(() => {
-      const v = $('#player-video');
-      if ($('#player').hidden || v.paused || v.ended) location.href = '/';
-      else backSoon();
-    }, BOOTH_IDLE_MS);
-  };
-  ['pointerdown', 'scroll', 'keydown'].forEach((e) => addEventListener(e, backSoon, { passive: true }));
-  backSoon();
+// The gallery lives on the booth tablet, so go back to the booth by itself
+// when guests walk away (unless a wish is playing).
+let boothTimer = null;
+function backSoon() {
+  clearTimeout(boothTimer);
+  boothTimer = setTimeout(() => {
+    const v = $('#player-video');
+    if ($('#player').hidden || v.paused || v.ended) location.href = '/';
+    else backSoon();
+  }, BOOTH_IDLE_MS);
 }
+['pointerdown', 'scroll', 'keydown'].forEach((e) => addEventListener(e, backSoon, { passive: true }));
+backSoon();
 
 loadConfig();
 start();

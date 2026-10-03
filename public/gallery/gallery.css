@@ -36,19 +36,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .filter:hover { color: #fff; }
 .none { margin: 28px 4vw; color: var(--mute); }
 .rows { scroll-margin-top: 70px; }
-.download {
-  color: var(--ink);
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  border: 1px solid rgba(255, 255, 255, .35);
-  border-radius: 4px;
-  padding: 8px 14px;
-  white-space: nowrap;
-}
-.download:hover { border-color: #fff; }
 .to-booth {
   background: var(--accent);
   color: var(--bg);
@@ -200,7 +187,7 @@ main#home:has(.hero[hidden]) .rows { margin-top: 0; padding-top: 90px; }
   background: linear-gradient(rgba(0, 0, 0, .7), transparent);
   transition: opacity .4s;
 }
-.player-name { flex: 1; text-align: center; font: 22px var(--serif); }
+.player-name { position: absolute; left: 50%; transform: translateX(-50%); font: 22px var(--serif); }
 .back { background: none; border: 0; font-size: 15px; }
 .nav-arrow {
   position: absolute;
@@ -253,6 +240,5 @@ main#home:has(.hero[hidden]) .rows { margin-top: 0; padding-top: 90px; }
   .filters { order: 3; width: 100%; gap: 14px; }
   .nav { gap: 12px; flex-wrap: wrap; }
   .logo { font-size: 20px; }
-  .download { display: none; }
   .hero-text { max-width: 86vw; }
 }

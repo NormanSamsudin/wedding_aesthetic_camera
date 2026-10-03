@@ -11,7 +11,6 @@ const https = require('https');
 const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
-const archiver = require('archiver');
 const qrcode = require('qrcode-terminal');
 const { ensureCertificates, CA_CERT } = require('./lib/certs');
 
@@ -147,18 +146,6 @@ app.get('/api/wishes', requireGallery, (req, res) => {
   res.json(readIndex().slice().reverse());
 });
 
-app.get('/api/wishes.zip', requireGallery, (req, res) => {
-  res.attachment(`wedding-wishes-${timestamp(new Date())}.zip`);
-  const zip = archiver('zip', { store: true });
-  zip.on('error', (err) => res.destroy(err));
-  zip.pipe(res);
-  for (const w of readIndex()) {
-    zip.file(path.join(WISHES_DIR, w.video), { name: w.video });
-  }
-  zip.file(INDEX_FILE, { name: 'index.json' });
-  zip.finalize();
-});
-
 // Videos and thumbnails, with range requests so seeking is instant.
 app.use(
   '/media',
@@ -179,14 +166,13 @@ async function start() {
   const ip = ips[0] || 'localhost';
 
   https.createServer({ cert, key }, app).listen(config.httpsPort);
-  // Plain http is only for the first-time setup page (installing the
-  // certificate on the tablet) and for using the gallery on the laptop itself.
+  // Plain http is only for the first-time setup page, which installs the
+  // certificate on the tablet.
   http.createServer(app).listen(config.httpPort);
 
   const setupUrl = `http://${ip}:${config.httpPort}/setup`;
   console.log('\n  Wedding Wish Booth is running\n');
   console.log(`  Booth (open on the tablet):  https://${ip}:${config.httpsPort}/`);
-  console.log(`  Gallery (on this laptop):    http://localhost:${config.httpPort}/gallery`);
   console.log(`  First-time tablet setup:     ${setupUrl}`);
   if (ips.length > 1) console.log(`  Other addresses on this laptop: ${ips.slice(1).join(', ')}`);
   console.log(`  Wishes are saved in:         ${WISHES_DIR}\n`);

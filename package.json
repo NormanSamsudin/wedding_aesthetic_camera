@@ -16,7 +16,6 @@
   },
   "homepage": "https://github.com/NormanSamsudin/wedding_aesthetic_camera#readme",
   "dependencies": {
-    "archiver": "^7.0.1",
     "express": "^4.22.3",
     "multer": "^2.4.0",
     "qrcode-terminal": "^0.12.0",
