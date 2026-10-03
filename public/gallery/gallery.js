@@ -50,7 +50,8 @@ function tile(w, list) {
     initial.textContent = '♡';
     el.append(initial);
   }
-  if (Date.now() - new Date(w.createdAt) < NEW_FOR_MS) {
+  const age = Date.now() - new Date(w.createdAt);
+  if (age >= 0 && age < NEW_FOR_MS) {
     const tag = document.createElement('span');
     tag.className = 'new';
     tag.textContent = 'NEW';
@@ -89,34 +90,73 @@ function row(title, list) {
   return frag;
 }
 
-// Rows by hour of the evening, e.g. "8 pm to 9 pm". The day is added only
-// when the wishes span more than one day (for example after a test run).
-function hourRows() {
-  const multiDay = new Set(wishes.map((w) => new Date(w.createdAt).toDateString())).size > 1;
+// Sessions of the day. Night runs past midnight, so a 1 am wish still
+// counts as the night before.
+const SESSIONS = [
+  { key: 'morning', label: 'Morning', from: 5, to: 12 },
+  { key: 'afternoon', label: 'Afternoon', from: 12, to: 17 },
+  { key: 'evening', label: 'Evening', from: 17, to: 21 },
+  { key: 'night', label: 'Night', from: 21, to: 29 },
+];
+function sessionOf(w) {
+  const h = new Date(w.createdAt).getHours();
+  const hour = h < 5 ? h + 24 : h;
+  return SESSIONS.find((s) => hour >= s.from && hour < s.to).key;
+}
+function dayOf(w) {
+  const d = new Date(w.createdAt);
+  d.setHours(d.getHours() - 5);
+  return d.toDateString();
+}
+
+let filter = 'all';
+
+// One row per session in the order of the day, each oldest first so a row
+// plays in the order it was recorded. The day is added only when the wishes
+// span more than one day (for example after a test run).
+function sessionRows(list) {
+  const multiDay = new Set(list.map(dayOf)).size > 1;
   const groups = new Map();
-  for (const w of wishes) {
-    const d = new Date(w.createdAt);
-    d.setMinutes(0, 0, 0);
-    const key = d.getTime();
+  for (const w of list.slice().reverse()) {
+    const key = `${dayOf(w)}|${sessionOf(w)}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(w);
   }
-  return [...groups.entries()].map(([start, list]) => {
-    const from = new Date(start);
-    const to = new Date(start + 3_600_000);
-    const hour = (d) => d.toLocaleTimeString([], { hour: 'numeric' }).toLowerCase();
-    const day = multiDay ? `${from.toLocaleDateString([], { weekday: 'long' })}, ` : '';
-    // Oldest first within the hour, so a row plays in the order it was recorded.
-    return row(`${day}${hour(from)} to ${hour(to)}`, list.slice().reverse());
+  return [...groups.entries()].map(([key, items]) => {
+    const [day, session] = key.split('|');
+    const label = SESSIONS.find((s) => s.key === session).label;
+    const prefix = multiDay ? `${new Date(day).toLocaleDateString([], { weekday: 'long' })} ` : '';
+    return row(`${prefix}${multiDay ? label.toLowerCase() : label}`, items);
   });
 }
 
 function render() {
   $('#empty').hidden = wishes.length > 0;
   $('#home').hidden = !wishes.length;
-  $('#rows').replaceChildren(...[row('Just in', wishes.slice(0, 15)), ...hourRows()].filter(Boolean));
+  document.querySelectorAll('.filter').forEach((b) => b.classList.toggle('on', b.dataset.filter === filter));
+  if (filter === 'all') {
+    $('#rows').replaceChildren(...[row('Just in', wishes.slice(0, 15)), ...sessionRows(wishes)].filter(Boolean));
+  } else {
+    const list = wishes.filter((w) => sessionOf(w) === filter);
+    const rows = sessionRows(list);
+    if (!rows.length) {
+      const p = document.createElement('p');
+      p.className = 'none';
+      p.textContent = `No wishes in the ${filter} yet.`;
+      rows.push(p);
+    }
+    $('#rows').replaceChildren(...rows);
+  }
   if (wishes.length && !featured) feature();
 }
+
+document.querySelectorAll('.filter').forEach((btn) =>
+  btn.addEventListener('click', () => {
+    filter = btn.dataset.filter;
+    render();
+    $('#rows').scrollIntoView({ behavior: 'smooth' });
+  })
+);
 
 // ---------- featured wish ----------
 
@@ -136,9 +176,10 @@ $('#hero-video').addEventListener('ended', feature);
 $('#hero-video').addEventListener('error', () => setTimeout(feature, 3000));
 $('#hero-play').addEventListener('click', () => featured && openPlayer(wishes, wishes.indexOf(featured)));
 // Play all runs in the order the wishes were recorded.
+// With a session picked, it plays just that session.
 $('#play-all').addEventListener('click', () => {
-  const chronological = wishes.slice().reverse();
-  openPlayer(chronological, 0);
+  const list = filter === 'all' ? wishes : wishes.filter((w) => sessionOf(w) === filter);
+  if (list.length) openPlayer(list.slice().reverse(), 0);
 });
 
 // ---------- player ----------

@@ -30,6 +30,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .nav.solid { background: var(--bg); }
 .logo { font: italic 26px var(--serif); color: var(--accent); white-space: nowrap; }
 .spacer { flex: 1; }
+.filters { display: flex; gap: 18px; }
+.filter { background: none; border: 0; padding: 4px 0; font-size: 15px; color: #ccc; }
+.filter.on { color: #fff; font-weight: 700; }
+.filter:hover { color: #fff; }
+.none { margin: 28px 4vw; color: var(--mute); }
+.rows { scroll-margin-top: 70px; }
 .download {
   color: var(--ink);
   text-decoration: none;
@@ -99,6 +105,7 @@ main#home:has(.hero[hidden]) .rows { margin-top: 0; padding-top: 90px; }
   overflow-x: auto;
   scroll-behavior: smooth;
   scroll-snap-type: x proximity;
+  scroll-padding-inline: 4vw;
   padding: 14px 4vw 24px;
   scrollbar-width: none;
 }
@@ -243,6 +250,7 @@ main#home:has(.hero[hidden]) .rows { margin-top: 0; padding-top: 90px; }
 .pin-error { color: #e08c86; margin: 0; }
 
 @media (max-width: 720px) {
+  .filters { order: 3; width: 100%; gap: 14px; }
   .nav { gap: 12px; flex-wrap: wrap; }
   .logo { font-size: 20px; }
   .download { display: none; }

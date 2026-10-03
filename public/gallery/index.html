@@ -10,6 +10,13 @@
 <body>
   <header class="nav">
     <span class="logo" id="logo"></span>
+    <nav class="filters">
+      <button class="filter on" data-filter="all">All</button>
+      <button class="filter" data-filter="morning">Morning</button>
+      <button class="filter" data-filter="afternoon">Afternoon</button>
+      <button class="filter" data-filter="evening">Evening</button>
+      <button class="filter" data-filter="night">Night</button>
+    </nav>
     <span class="spacer"></span>
     <a class="to-booth" id="to-booth" href="/?start=1" hidden>Start recording</a>
     <a class="download" id="download-all" href="/api/wishes.zip" title="Download every wish as one zip file">Download all</a>
