@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141210">
+  <title>Wedding Wishes</title>
+  <link rel="stylesheet" href="/gallery/gallery.css">
+</head>
+<body>
+  <header class="nav">
+    <span class="logo" id="logo"></span>
+    <nav class="filters">
+      <button class="filter on" data-filter="all">All</button>
+      <button class="filter" data-filter="morning">Morning</button>
+      <button class="filter" data-filter="afternoon">Afternoon</button>
+      <button class="filter" data-filter="evening">Evening</button>
+      <button class="filter" data-filter="night">Night</button>
+    </nav>
+    <span class="spacer"></span>
+    <a class="to-booth" href="/?start=1">Start recording</a>
+  </header>
+
+  <main id="home">
+    <section class="hero" id="hero" hidden>
+      <video id="hero-video" muted playsinline preload="auto"></video>
+      <div class="shade"></div>
+      <div class="hero-text">
+        <p class="kicker">Featured wish</p>
+        <h1 class="hero-title">Doa-doa yang baik buat pengantin</h1>
+        <p class="hero-desc">A wish for the newlyweds, recorded at the booth.</p>
+        <button class="b white" id="hero-play"><span class="tri"></span>Play</button>
+        <button class="b grey" id="play-all">Play all wishes</button>
+      </div>
+    </section>
+    <div id="rows" class="rows"></div>
+  </main>
+
+  <div id="empty" class="empty" hidden>
+    <p class="kicker">No wishes yet</p>
+    <p>They will appear here as guests record them at the booth.</p>
+  </div>
+
+  <div id="player" class="player" hidden>
+    <video id="player-video" controls playsinline></video>
+    <div class="player-top">
+      <button class="back" id="close">&larr; Back to wishes</button>
+      <span class="player-name" id="player-name"></span>
+    </div>
+    <button class="nav-arrow prev" id="prev" aria-label="Previous wish">&#8249;</button>
+    <button class="nav-arrow next" id="next" aria-label="Next wish">&#8250;</button>
+    <div class="up-next" id="up-next" hidden>
+      <p>Up next</p>
+      <div class="tile" id="up-next-tile"></div>
+    </div>
+  </div>
+
+  <div id="pin" class="pin" hidden>
+    <form id="pin-form">
+      <p class="kicker">Wedding wishes</p>
+      <input id="pin-input" type="password" inputmode="numeric" placeholder="Enter PIN" autocomplete="off">
+      <button class="b white">Open</button>
+      <p class="pin-error" id="pin-error" hidden>That PIN didn't match.</p>
+    </form>
+  </div>
+
+  <script src="/gallery/gallery.js"></script>
+</body>
+</html>

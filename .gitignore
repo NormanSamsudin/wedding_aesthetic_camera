@@ -26,3 +26,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Wish booth data (never commit guest videos or private keys)
+/wishes/
+/certs/
