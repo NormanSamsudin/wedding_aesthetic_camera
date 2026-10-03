@@ -1,4 +1,4 @@
-// Wish booth: welcome → name → family/friends → countdown → record → review → save → thank you.
+// Wish booth: welcome → countdown → record → review → save → thank you.
 
 const $ = (sel) => document.querySelector(sel);
 const IDLE_RESET_MS = 60_000;
@@ -14,8 +14,6 @@ const state = {
   mimeType: '',
   startedAt: 0,
   durationMs: 0,
-  name: '',
-  group: '',
 };
 
 // ---------- screens ----------
@@ -26,21 +24,17 @@ function show(id) {
   document.body.classList.toggle('live', id === 'countdown' || id === 'recording');
   clearTimeout(idleTimer);
   // Walk-away safety: screens waiting on a guest go back to the start.
-  if (['name', 'group', 'review'].includes(id)) {
+  if (id === 'review') {
     idleTimer = setTimeout(reset, IDLE_RESET_MS);
   }
 }
 document.addEventListener('pointerdown', () => {
-  const active = document.querySelector('.screen.active')?.id;
-  if (['s-name', 's-group', 's-review'].includes(active)) show(active.slice(2));
+  if (document.querySelector('#s-review.active')) show('review');
 });
 
 function reset() {
   state.blob = null;
   state.thumb = null;
-  state.name = '';
-  state.group = '';
-  $('#guest-name').value = '';
   const pb = $('#playback');
   pb.pause();
   if (pb.src) URL.revokeObjectURL(pb.src);
@@ -222,8 +216,6 @@ function send() {
   $('#progress').style.width = '0';
 
   const form = new FormData();
-  form.append('name', state.name);
-  form.append('group', state.group);
   form.append('durationMs', String(state.durationMs));
   const ext = state.blob.type.includes('mp4') ? 'mp4' : 'webm';
   form.append('video', state.blob, `wish.${ext}`);
@@ -245,37 +237,17 @@ function failed() {
 }
 
 function thanks() {
-  $('#thanks-title').textContent = state.name ? `Thank you, ${state.name}` : 'Thank you';
   show('thanks');
   setTimeout(reset, THANKS_MS);
 }
 
 // ---------- wiring ----------
 
-document.querySelectorAll('[data-go]').forEach((btn) =>
-  btn.addEventListener('click', () => {
-    if (btn.hasAttribute('data-clear-name')) $('#guest-name').value = '';
-    if (btn.dataset.go === 'group') {
-      state.name = $('#guest-name').value.trim();
-      $('#guest-name').blur();
-    }
-    if (btn.dataset.go === 'name') {
-      keepAwake();
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    }
-    show(btn.dataset.go);
-    if (btn.dataset.go === 'name') setTimeout(() => $('#guest-name').focus(), 350);
-  })
-);
-$('#guest-name').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') document.querySelector('#s-name [data-go="group"]:not([data-clear-name])').click();
+$('#start').addEventListener('click', () => {
+  keepAwake();
+  document.documentElement.requestFullscreen?.().catch(() => {});
+  countdown();
 });
-document.querySelectorAll('[data-group]').forEach((btn) =>
-  btn.addEventListener('click', () => {
-    state.group = btn.dataset.group;
-    countdown();
-  })
-);
 $('#stop').addEventListener('click', stopRecording);
 $('#play').addEventListener('click', () => {
   $('#play').hidden = true;

@@ -2,8 +2,8 @@
 
 A video guestbook that runs entirely on your laptop. A tablet at the venue opens the booth over the local wifi, guests record a short video wish, and every wish is saved straight to a folder on your laptop. Nothing is uploaded to the internet.
 
-- **Booth** (on the tablet): welcome, name, family or friends, a 3-2-1 countdown, recording, review, then thank you.
-- **Gallery** (on the laptop, TV or projector): a cinema-style page with a featured wish, rows for *Just in*, *From family* and *From friends*, a full-screen player with *Up next*, *Play all*, and *Download all*.
+- **Booth** (on the tablet): one tap on *Leave a wish* starts a 3-2-1 countdown, then recording, review, and thank you.
+- **Gallery** (on the laptop, TV or projector): a cinema-style page with a featured wish, a *Just in* row and a row for each hour of the evening (for example *8 pm to 9 pm*), a full-screen player with *Up next*, *Play all*, and *Download all*.
 
 ## What you need
 
@@ -63,9 +63,9 @@ Each wish is saved the moment a guest taps **Send** to `wishes/`:
 
 ```
 wishes/
-  2026-12-12_20-14-05_Farah_3f2a.mp4   the video (or .webm on older Android Chrome)
-  2026-12-12_20-14-05_Farah_3f2a.jpg   still frame for the gallery
-  index.json                            name, family/friends, time and length of every wish
+  2026-12-12_20-14-05_wish_3f2a.mp4   the video (or .webm on older Android Chrome)
+  2026-12-12_20-14-05_wish_3f2a.jpg   still frame for the gallery
+  index.json                           time and length of every wish
 ```
 
 **Download all** in the gallery gives you a zip of every video plus `index.json`.
@@ -74,5 +74,5 @@ wishes/
 
 - Videos are recorded as MP4 when the browser supports it (iPads and recent Chrome), which plays everywhere. Older Android Chrome records WebM, which plays in Chrome, Edge and Firefox but not Safari.
 - If a save fails (for example the wifi drops), the guest sees **Try again** and the recording is kept, so they don't have to record again.
-- The booth goes back to the welcome screen if a guest walks away for a minute, and after each thank-you screen.
+- The booth goes back to the welcome screen if a guest leaves the review screen for a minute, and after each thank-you screen.
 - `wishes/` and `certs/` are in `.gitignore`, so guest videos and your private key are never committed.

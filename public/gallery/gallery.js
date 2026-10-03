@@ -5,11 +5,10 @@ const REFRESH_MS = 15_000;
 const NEW_FOR_MS = 15 * 60_000;
 
 let wishes = []; // newest first
-let tab = 'home';
-let query = '';
 
 const media = (file) => `/media/${encodeURIComponent(file)}`;
-const who = (w) => w.name || 'A guest';
+const clock = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+const when = (w) => clock(new Date(w.createdAt));
 
 // ---------- data ----------
 
@@ -44,7 +43,7 @@ function tile(w, list) {
   else {
     const initial = document.createElement('span');
     initial.className = 'initial';
-    initial.textContent = who(w).charAt(0).toUpperCase();
+    initial.textContent = '♡';
     el.append(initial);
   }
   if (Date.now() - new Date(w.createdAt) < NEW_FOR_MS) {
@@ -55,7 +54,7 @@ function tile(w, list) {
   }
   const label = document.createElement('span');
   label.className = 'label';
-  label.textContent = who(w);
+  label.textContent = when(w);
   el.append(label);
   el.addEventListener('click', () => openPlayer(list, list.indexOf(w)));
   return el;
@@ -86,44 +85,33 @@ function row(title, list) {
   return frag;
 }
 
+// Rows by hour of the evening, e.g. "8 pm to 9 pm". The day is added only
+// when the wishes span more than one day (for example after a test run).
+function hourRows() {
+  const multiDay = new Set(wishes.map((w) => new Date(w.createdAt).toDateString())).size > 1;
+  const groups = new Map();
+  for (const w of wishes) {
+    const d = new Date(w.createdAt);
+    d.setMinutes(0, 0, 0);
+    const key = d.getTime();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(w);
+  }
+  return [...groups.entries()].map(([start, list]) => {
+    const from = new Date(start);
+    const to = new Date(start + 3_600_000);
+    const hour = (d) => d.toLocaleTimeString([], { hour: 'numeric' }).toLowerCase();
+    const day = multiDay ? `${from.toLocaleDateString([], { weekday: 'long' })}, ` : '';
+    // Oldest first within the hour, so a row plays in the order it was recorded.
+    return row(`${day}${hour(from)} to ${hour(to)}`, list.slice().reverse());
+  });
+}
+
 function render() {
   $('#empty').hidden = wishes.length > 0;
-  const filtered = query
-    ? wishes.filter((w) => who(w).toLowerCase().includes(query.toLowerCase()))
-    : tab === 'home'
-      ? wishes
-      : wishes.filter((w) => w.group === tab);
-
-  const showHome = tab === 'home' && !query;
-  $('#home').hidden = !showHome || !wishes.length;
-  $('#grid-view').hidden = showHome;
-
-  if (showHome) {
-    const rows = $('#rows');
-    rows.replaceChildren(
-      ...[
-        row('Just in', wishes),
-        row('From family', wishes.filter((w) => w.group === 'family')),
-        row('From friends', wishes.filter((w) => w.group === 'friends')),
-        row('More wishes', wishes.filter((w) => !w.group)),
-      ].filter(Boolean)
-    );
-    if (wishes.length && !featured) feature();
-  } else {
-    $('#grid-title').textContent = query
-      ? `Wishes from "${query}"`
-      : tab === 'family'
-        ? 'From family'
-        : 'From friends';
-    const grid = $('#grid');
-    grid.replaceChildren(...filtered.map((w) => tile(w, filtered)));
-    if (!filtered.length && wishes.length) {
-      const p = document.createElement('p');
-      p.style.color = 'var(--mute)';
-      p.textContent = 'No wishes here yet.';
-      grid.append(p);
-    }
-  }
+  $('#home').hidden = !wishes.length;
+  $('#rows').replaceChildren(...[row('Just in', wishes.slice(0, 15)), ...hourRows()].filter(Boolean));
+  if (wishes.length && !featured) feature();
 }
 
 // ---------- featured wish ----------
@@ -134,7 +122,7 @@ function feature() {
   featured = pool[Math.floor(Math.random() * pool.length)];
   if (!featured) return;
   $('#hero').hidden = false;
-  $('#hero-title').textContent = featured.name ? `From ${featured.name}` : 'From a guest';
+  $('#hero-title').textContent = `Recorded at ${when(featured)}`;
   const v = $('#hero-video');
   if (featured.thumb) v.poster = media(featured.thumb);
   v.src = media(featured.video);
@@ -169,7 +157,7 @@ function playAt(i) {
   v.poster = w.thumb ? media(w.thumb) : '';
   v.src = media(w.video);
   v.play().catch(() => {});
-  $('#player-name').textContent = who(w);
+  $('#player-name').textContent = when(w);
   $('#player-download').href = media(w.video);
   $('#player-download').setAttribute('download', w.video);
   $('#prev').disabled = pos === 0;
@@ -230,22 +218,6 @@ $('#player').addEventListener('touchend', (e) => {
 
 // ---------- navigation ----------
 
-document.querySelectorAll('.tab').forEach((btn) =>
-  btn.addEventListener('click', () => {
-    tab = btn.dataset.tab;
-    document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('on', b === btn));
-    query = '';
-    $('#search').value = '';
-    render();
-    window.scrollTo(0, 0);
-    if (tab === 'home') $('#hero-video').play().catch(() => {});
-    else $('#hero-video').pause();
-  })
-);
-$('#search').addEventListener('input', (e) => {
-  query = e.target.value.trim();
-  render();
-});
 window.addEventListener('scroll', () => $('.nav').classList.toggle('solid', scrollY > 40));
 
 // ---------- PIN ----------

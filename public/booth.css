@@ -78,7 +78,6 @@ body.live .frame { opacity: 1; }
 .rule { width: 56px; height: 1px; background: var(--accent); margin: 22px auto; }
 .heart { color: var(--accent); font-size: 52px; line-height: 1; }
 
-.row { display: flex; gap: 16px; justify-content: center; }
 
 .btn {
   font: 600 16px var(--sans);
@@ -94,45 +93,10 @@ body.live .frame { opacity: 1; }
 #s-welcome .btn { margin-top: 40px; }
 .btn.ghost { background: transparent; color: var(--ink); }
 .btn.glass { background: rgba(255, 255, 255, .25); border-color: rgba(255, 255, 255, .7); color: #fff; backdrop-filter: blur(6px); }
-.btn:active, .choice:active { transform: scale(.97); }
+.btn:active { transform: scale(.97); }
 
-.link {
-  margin-top: 28px;
-  background: none;
-  border: 0;
-  font: 600 15px var(--sans);
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--mute);
-  padding: 14px 28px;
-}
 
-.choices { margin-top: 36px; gap: 24px; }
-.choice {
-  width: 220px;
-  padding: 34px 0;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #fff;
-  font: 26px var(--serif);
-  color: var(--ink);
-}
 
-.line-input {
-  width: min(520px, 80vw);
-  margin: 34px 0 40px;
-  border: 0;
-  border-bottom: 1px solid var(--ink);
-  background: transparent;
-  padding: 12px 0;
-  font: 28px var(--serif);
-  text-align: center;
-  color: var(--ink);
-  outline: none;
-  user-select: text;
-  -webkit-user-select: text;
-}
-.line-input::placeholder { color: #bdb5ac; }
 
 .bar {
   position: fixed;

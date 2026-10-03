@@ -29,21 +29,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .nav.solid { background: var(--bg); }
 .logo { font: italic 26px var(--serif); color: var(--accent); white-space: nowrap; }
-.tabs { display: flex; gap: 18px; }
-.tab { background: none; border: 0; padding: 4px 0; font-size: 14px; color: #ccc; }
-.tab.on { color: #fff; font-weight: 600; }
 .spacer { flex: 1; }
-.search {
-  background: rgba(0, 0, 0, .5);
-  border: 1px solid rgba(255, 255, 255, .25);
-  color: var(--ink);
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-size: 13px;
-  width: 200px;
-  outline: none;
-}
-.search:focus { border-color: var(--ink); }
 .download {
   color: var(--ink);
   text-decoration: none;
@@ -176,11 +162,6 @@ main#home:has(.hero[hidden]) .rows { margin-top: 0; padding-top: 90px; }
   color: rgba(255, 255, 255, .35);
 }
 
-/* ---------- grid (tabs and search) ---------- */
-#grid-view { padding: 100px 4vw 60px; }
-.grid-title { font: 400 32px var(--serif); margin: 0 0 20px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 26px 10px; }
-.grid .tile { flex: none; width: 100%; }
 
 .empty { text-align: center; padding: 28vh 20px; color: var(--mute); }
 .empty p { margin: 8px 0; }
@@ -252,7 +233,6 @@ main#home:has(.hero[hidden]) .rows { margin-top: 0; padding-top: 90px; }
 @media (max-width: 720px) {
   .nav { gap: 12px; flex-wrap: wrap; }
   .logo { font-size: 20px; }
-  .search { width: 130px; }
   .download { display: none; }
   .hero-text { max-width: 86vw; }
 }

@@ -19,7 +19,6 @@ const ROOT = __dirname;
 const WISHES_DIR = path.join(ROOT, 'wishes');
 const INDEX_FILE = path.join(WISHES_DIR, 'index.json');
 const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
-const GROUPS = ['family', 'friends'];
 
 fs.mkdirSync(WISHES_DIR, { recursive: true });
 
@@ -45,17 +44,6 @@ function addToIndex(entry) {
     fs.renameSync(tmp, INDEX_FILE);
   });
   return writeQueue;
-}
-
-function slug(text) {
-  return (
-    String(text || '')
-      .normalize('NFKD')
-      .replace(/[^\w\s-]/g, '')
-      .trim()
-      .replace(/\s+/g, '-')
-      .slice(0, 40) || 'guest'
-  );
 }
 
 function timestamp(d) {
@@ -116,11 +104,9 @@ app.post(
         return res.status(400).json({ error: 'no video received' });
       }
       const now = new Date();
-      const name = String(req.body.name || '').trim().slice(0, 60);
-      const group = GROUPS.includes(req.body.group) ? req.body.group : null;
       // Some browsers send the upload as text/plain, so check the file name too.
       const ext = /mp4/.test(video.mimetype) || /\.mp4$/i.test(video.originalname) ? 'mp4' : 'webm';
-      const base = `${timestamp(now)}_${slug(name)}_${crypto.randomBytes(2).toString('hex')}`;
+      const base = `${timestamp(now)}_wish_${crypto.randomBytes(2).toString('hex')}`;
 
       fs.renameSync(video.path, path.join(WISHES_DIR, `${base}.${ext}`));
       let thumbFile = null;
@@ -131,8 +117,6 @@ app.post(
 
       const entry = {
         id: base,
-        name,
-        group,
         createdAt: now.toISOString(),
         durationMs: Number(req.body.durationMs) || null,
         video: `${base}.${ext}`,
@@ -140,7 +124,7 @@ app.post(
         mimeType: `video/${ext}`,
       };
       await addToIndex(entry);
-      console.log(`  ♡ saved wish from ${name || 'a guest'} (${(video.size / 1e6).toFixed(1)} MB)`);
+      console.log(`  ♡ saved a wish (${(video.size / 1e6).toFixed(1)} MB)`);
       res.json({ ok: true, id: entry.id });
     } catch (err) {
       console.error('Failed to save wish:', err);
