@@ -163,7 +163,6 @@ function feature() {
   featured = pool[Math.floor(Math.random() * pool.length)];
   if (!featured) return;
   $('#hero').hidden = false;
-  $('#hero-title').textContent = `Recorded at ${when(featured)}`;
   const v = $('#hero-video');
   if (featured.thumb) v.poster = media(featured.thumb);
   v.src = media(featured.video);
