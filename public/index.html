@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#FAF7F2">
+  <title>Wish Booth</title>
+  <link rel="stylesheet" href="/booth.css">
+</head>
+<body>
+  <!-- Live camera, shared by every screen. Mirrored like a mirror. -->
+  <video id="preview" class="cam" autoplay muted playsinline></video>
+  <div class="frame"></div>
+
+  <section id="s-welcome" class="screen soft active">
+    <div class="center">
+      <p class="small" data-text="welcomeLine"></p>
+      <h1 class="names" data-text="couple"></h1>
+      <div class="rule"></div>
+      <p class="small" data-text="date"></p>
+      <button class="btn" data-go="name">Leave a wish</button>
+    </div>
+  </section>
+
+  <section id="s-name" class="screen paper">
+    <div class="center">
+      <p class="small">Step 1 of 2</p>
+      <h2 class="title">Who is leaving this wish?</h2>
+      <input id="guest-name" class="line-input" type="text" placeholder="Your name"
+             autocomplete="off" autocapitalize="words" enterkeyhint="next" maxlength="60">
+      <div class="row">
+        <button class="btn ghost" data-go="group" data-clear-name>Skip</button>
+        <button class="btn" data-go="group">Continue</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-group" class="screen paper">
+    <div class="center">
+      <p class="small">Step 2 of 2</p>
+      <h2 class="title">You are here as</h2>
+      <div class="row choices">
+        <button class="choice" data-group="family">Family</button>
+        <button class="choice" data-group="friends">Friends</button>
+      </div>
+      <button class="link" data-group="">Skip</button>
+    </div>
+  </section>
+
+  <section id="s-countdown" class="screen live">
+    <div id="count" class="count">3</div>
+    <div class="bar"><span class="small light">Get ready, look at the camera</span></div>
+  </section>
+
+  <section id="s-recording" class="screen live">
+    <div class="pill"><span class="dot"></span><span id="timer">00:00</span></div>
+    <div class="bar"><button id="stop" class="stop" aria-label="Stop recording"><i></i></button></div>
+  </section>
+
+  <section id="s-review" class="screen dark">
+    <video id="playback" class="cam unmirrored" playsinline></video>
+    <button id="play" class="play" aria-label="Play"></button>
+    <div class="bar">
+      <button class="btn glass" id="retake">Re-record</button>
+      <button class="btn" id="send">Send wish</button>
+    </div>
+  </section>
+
+  <section id="s-sending" class="screen paper">
+    <div class="center">
+      <p class="small">Saving your wish</p>
+      <div class="progress"><b id="progress"></b></div>
+      <div id="send-error" hidden>
+        <p class="note">That didn't save. Please check the wifi and try again.</p>
+        <button class="btn" id="retry">Try again</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-thanks" class="screen paper">
+    <div class="center">
+      <div class="heart">&#9825;</div>
+      <h2 class="title" id="thanks-title">Thank you</h2>
+      <div class="rule"></div>
+      <p class="small">Your wish has been saved</p>
+    </div>
+  </section>
+
+  <section id="s-blocked" class="screen paper">
+    <div class="center narrow">
+      <h2 class="title">The camera isn't available</h2>
+      <p class="note" id="blocked-reason"></p>
+      <button class="btn" onclick="location.reload()">Try again</button>
+    </div>
+  </section>
+
+  <script src="/booth.js"></script>
+</body>
+</html>

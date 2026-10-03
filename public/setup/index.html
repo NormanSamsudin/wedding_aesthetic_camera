@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tablet Setup</title>
+  <style>
+    :root { --bg: #FAF7F2; --ink: #2B2724; --mute: #8C847C; --line: #E6DFD6; --accent: #B08D57; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1 { font: 400 40px Georgia, serif; margin: 0 0 6px; }
+    h2 { font: 400 24px Georgia, serif; margin: 40px 0 8px; }
+    .lead { color: var(--mute); margin: 0 0 24px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 20px 24px; margin: 16px 0; }
+    ol { padding-left: 22px; margin: 8px 0; }
+    li { margin: 6px 0; }
+    .btn { display: inline-block; background: var(--ink); color: var(--bg); text-decoration: none; font-weight: 600;
+           letter-spacing: .1em; text-transform: uppercase; font-size: 14px; padding: 16px 28px; border-radius: 999px; margin: 8px 0; }
+    .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+    code { background: #f0ebe3; padding: 2px 6px; border-radius: 4px; }
+    .tabs { display: flex; gap: 8px; margin-top: 12px; }
+    .tabs button { font: inherit; border: 1px solid var(--line); background: #fff; padding: 8px 18px; border-radius: 999px; cursor: pointer; }
+    .tabs button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+    .accent { color: var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Tablet setup</h1>
+  <p class="lead">Do this once on the booth tablet. It lets the tablet trust your laptop so the camera can be used.</p>
+
+  <h2><span class="accent">1.</span> Download the certificate</h2>
+  <a class="btn" href="/wish-booth-ca.crt" download="wish-booth-ca.crt">Download certificate</a>
+
+  <h2><span class="accent">2.</span> Install it</h2>
+  <div class="tabs">
+    <button class="on" data-os="ipad">iPad</button>
+    <button data-os="android">Android</button>
+  </div>
+  <div class="card" data-for="ipad">
+    <ol>
+      <li>Open this page in <strong>Safari</strong> and tap <em>Download certificate</em>, then <em>Allow</em>.</li>
+      <li>Open <strong>Settings</strong> and tap <em>Profile Downloaded</em> near the top, then <em>Install</em>.</li>
+      <li>Go to <strong>Settings › General › About › Certificate Trust Settings</strong> and turn on <em>Wedding Wish Booth Local CA</em>.</li>
+    </ol>
+  </div>
+  <div class="card" data-for="android" hidden>
+    <ol>
+      <li>Open this page in <strong>Chrome</strong> and tap <em>Download certificate</em>.</li>
+      <li>Open <strong>Settings › Security › More security settings › Encryption &amp; credentials › Install a certificate › CA certificate</strong>. On some tablets, search Settings for <em>CA certificate</em>.</li>
+      <li>Tap <em>Install anyway</em> and pick <code>wish-booth-ca.crt</code> from Downloads.</li>
+    </ol>
+  </div>
+
+  <h2><span class="accent">3.</span> Open the booth</h2>
+  <p>It should open without any warning. Allow the camera and microphone when asked.</p>
+  <a class="btn" id="booth-link" href="#">Open the booth</a>
+  <p class="lead" id="booth-url"></p>
+
+  <h2><span class="accent">4.</span> Make it a booth</h2>
+  <div class="card" data-for="ipad">
+    <ol>
+      <li>In Safari tap <em>Share › Add to Home Screen</em>, then open the booth from the new icon so it runs full screen.</li>
+      <li>Turn on <strong>Settings › Accessibility › Guided Access</strong>, open the booth, and triple-click the top button to lock the tablet to it.</li>
+      <li>Set <strong>Settings › Display &amp; Brightness › Auto-Lock</strong> to <em>Never</em>.</li>
+    </ol>
+  </div>
+  <div class="card" data-for="android" hidden>
+    <ol>
+      <li>In Chrome tap <em>⋮ › Add to Home screen</em>, then open the booth from the new icon so it runs full screen.</li>
+      <li>Turn on <strong>Settings › Security › App pinning</strong> and pin the booth so guests can't leave it.</li>
+      <li>Set the screen timeout to the longest option and keep the tablet charging.</li>
+    </ol>
+  </div>
+</main>
+<script>
+  fetch('/api/config').then((r) => r.json()).then((c) => {
+    const url = `https://${location.hostname}:${c.httpsPort}/`;
+    document.getElementById('booth-link').href = url;
+    document.getElementById('booth-url').textContent = url;
+  });
+  const pick = (os) => {
+    document.querySelectorAll('[data-os]').forEach((b) => b.classList.toggle('on', b.dataset.os === os));
+    document.querySelectorAll('[data-for]').forEach((c) => (c.hidden = c.dataset.for !== os));
+  };
+  document.querySelectorAll('[data-os]').forEach((b) => b.addEventListener('click', () => pick(b.dataset.os)));
+  if (/android/i.test(navigator.userAgent)) pick('android');
+</script>
+</body>
+</html>

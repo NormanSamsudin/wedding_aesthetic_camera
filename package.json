@@ -1,0 +1,29 @@
+{
+  "name": "wedding_aesthetic_camera",
+  "version": "1.0.0",
+  "description": "website for wedding event",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NormanSamsudin/wedding_aesthetic_camera.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NormanSamsudin/wedding_aesthetic_camera/issues"
+  },
+  "homepage": "https://github.com/NormanSamsudin/wedding_aesthetic_camera#readme",
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "express": "^4.22.3",
+    "multer": "^2.4.0",
+    "qrcode-terminal": "^0.12.0",
+    "selfsigned": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}
