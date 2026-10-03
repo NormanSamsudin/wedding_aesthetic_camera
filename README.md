@@ -3,7 +3,7 @@
 A video guestbook that runs entirely on your laptop. A tablet at the venue opens the booth over the local wifi, guests record a short video wish, and every wish is saved straight to a folder on your laptop. Nothing is uploaded to the internet.
 
 - **Booth** (on the tablet): one tap on *Leave a wish* starts a 3-2-1 countdown, then recording, review, and thank you.
-- **Gallery** (on the laptop, TV or projector): a cinema-style page with a featured wish, a *Just in* row and a row for each hour of the evening (for example *8 pm to 9 pm*), a full-screen player with *Up next*, *Play all*, and *Download all*.
+- **Gallery** (on the laptop, TV or projector, and on the booth via *Watch the wishes*): a cinema-style page with a featured wish, a *Just in* row and a row for each hour of the evening (for example *8 pm to 9 pm*), a full-screen player with *Up next*, *Play all*, and *Download all*.
 
 ## What you need
 
@@ -28,7 +28,7 @@ Edit `config.json`:
 | `welcomeLine` | Small line above the names. |
 | `accent` | Accent colour, e.g. `"#B08D57"` gold, `"#8A9A7B"` sage, `"#C49A9A"` dusty rose. |
 | `maxSeconds` | Longest a wish can be (default 60). |
-| `galleryPin` | Set a PIN to lock the gallery. Leave `""` for no PIN. |
+| `galleryPin` | Set a PIN to lock the gallery. Leave `""` (the default) so guests can open it from the booth without a PIN. |
 
 Start it:
 
@@ -75,4 +75,6 @@ wishes/
 - Videos are recorded as MP4 when the browser supports it (iPads and recent Chrome), which plays everywhere. Older Android Chrome records WebM, which plays in Chrome, Edge and Firefox but not Safari.
 - If a save fails (for example the wifi drops), the guest sees **Try again** and the recording is kept, so they don't have to record again.
 - The booth goes back to the welcome screen if a guest leaves the review screen for a minute, and after each thank-you screen.
+- Guests can tap **Watch the wishes** on the booth's welcome screen to browse the gallery, and **Leave a wish** to go back. Opened from the booth, the gallery hides the download buttons and returns to the booth by itself after two minutes without a touch (unless a wish is playing).
+- On an iPad, set **Settings › Apps › Safari › Camera** and **Microphone** to *Allow* so Safari doesn't ask again each time a guest comes back from the gallery.
 - `wishes/` and `certs/` are in `.gitignore`, so guest videos and your private key are never committed.

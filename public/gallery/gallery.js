@@ -3,6 +3,10 @@
 const $ = (sel) => document.querySelector(sel);
 const REFRESH_MS = 15_000;
 const NEW_FOR_MS = 15 * 60_000;
+const BOOTH_IDLE_MS = 2 * 60_000;
+// Opened from the booth tablet: show a way back, hide downloads, and return
+// to the booth by itself if guests walk away.
+const fromBooth = new URLSearchParams(location.search).get('from') === 'booth';
 
 let wishes = []; // newest first
 
@@ -246,6 +250,23 @@ async function start() {
     polling = true;
     setInterval(() => load().catch(() => {}), REFRESH_MS);
   }
+}
+
+if (fromBooth) {
+  $('#to-booth').hidden = false;
+  $('#download-all').hidden = true;
+  $('#player-download').hidden = true;
+  let boothTimer = null;
+  const backSoon = () => {
+    clearTimeout(boothTimer);
+    boothTimer = setTimeout(() => {
+      const v = $('#player-video');
+      if ($('#player').hidden || v.paused || v.ended) location.href = '/';
+      else backSoon();
+    }, BOOTH_IDLE_MS);
+  };
+  ['pointerdown', 'scroll', 'keydown'].forEach((e) => addEventListener(e, backSoon, { passive: true }));
+  backSoon();
 }
 
 loadConfig();

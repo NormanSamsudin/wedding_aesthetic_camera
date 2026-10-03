@@ -91,6 +91,16 @@ body.live .frame { opacity: 1; }
   cursor: pointer;
 }
 #s-welcome .btn { margin-top: 40px; }
+.link {
+  margin-top: 22px;
+  padding: 14px 28px;
+  font: 600 14px var(--sans);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+}
 .btn.ghost { background: transparent; color: var(--ink); }
 .btn.glass { background: rgba(255, 255, 255, .25); border-color: rgba(255, 255, 255, .7); color: #fff; backdrop-filter: blur(6px); }
 .btn:active { transform: scale(.97); }

@@ -43,6 +43,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
   white-space: nowrap;
 }
 .download:hover { border-color: #fff; }
+.to-booth {
+  background: var(--accent);
+  color: var(--bg);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 10px 18px;
+  white-space: nowrap;
+}
 
 /* ---------- hero ---------- */
 .hero { position: relative; height: 72vh; min-height: 420px; overflow: hidden; background: #2a2622; }
