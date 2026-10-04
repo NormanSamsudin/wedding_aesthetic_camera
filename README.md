@@ -111,3 +111,11 @@ The gallery shows the selected event. To look back at another event, tap **Wishe
 - Guests can tap **Watch the wishes** on the booth's welcome screen to browse the gallery, and **Start recording** to go straight back into the countdown. The gallery opens inside the booth page, so the tablet stays full screen and the camera stays on. It returns to the booth by itself after two minutes without a touch (unless a wish is playing).
 - Gallery sessions: Morning 5 am to 12 pm, Afternoon 12 pm to 5 pm, Evening 5 pm to 9 pm, Night 9 pm to 5 am (a 1 am wish counts as the night before). Change the hours in `SESSIONS` in `public/gallery/gallery.js`, and the words in `public/i18n.js`.
 - `events/`, `wishes/` and `certs/` are in `.gitignore`, so guest videos and your private key are never committed. Wishes recorded before events existed stay in `wishes/` and aren't shown in the gallery.
+
+## Company Buddy
+
+- Norman
+- Fathu
+- Nafisi
+- Izzudin
+- Danish
