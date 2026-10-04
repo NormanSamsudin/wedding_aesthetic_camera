@@ -32,14 +32,21 @@ document.addEventListener('pointerdown', () => {
   if (document.querySelector('#s-review.active')) show('review');
 });
 
-function reset() {
+async function reset() {
   state.blob = null;
   state.thumb = null;
   const pb = $('#playback');
   pb.pause();
   if (pb.src) URL.revokeObjectURL(pb.src);
   pb.removeAttribute('src');
-  show('welcome');
+  // Pick up a newly selected or edited event between guests.
+  await loadConfig();
+  showHome();
+}
+
+// Nothing can be recorded until an event is selected in /settings.
+function showHome() {
+  show(state.config.event ? 'welcome' : 'no-event');
 }
 
 // ---------- config & text ----------
@@ -60,9 +67,10 @@ function renderCouple(el, text) {
 
 async function loadConfig() {
   try {
-    state.config = await (await fetch('/api/config')).json();
+    state.config = await (await fetch('/api/config', { cache: 'no-store' })).json();
   } catch {}
-  const c = state.config;
+  // Names, colour and max length come from the selected event.
+  const c = state.config.event || {};
   if (c.accent) document.documentElement.style.setProperty('--accent', c.accent);
   document.querySelectorAll('[data-text]').forEach((el) => {
     const value = c[el.dataset.text] || '';
@@ -180,7 +188,7 @@ function startRecording() {
 
   show('recording');
   setTimeout(captureThumb, 1500);
-  const max = state.config.maxSeconds || 60;
+  const max = state.config.event?.maxSeconds || 60;
   const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   const tick = () => {
     const secs = Math.floor((performance.now() - state.startedAt) / 1000);
@@ -226,13 +234,17 @@ function send() {
   xhr.upload.onprogress = (e) => {
     if (e.lengthComputable) $('#progress').style.width = `${(e.loaded / e.total) * 100}%`;
   };
-  xhr.onload = () => (xhr.status === 200 ? thanks() : failed());
+  xhr.onload = () => (xhr.status === 200 ? thanks() : failed(xhr.status));
   xhr.onerror = failed;
   xhr.send(form);
 }
 
-function failed() {
+function failed(status) {
   // The recording stays in memory, so the guest can retry without re-recording.
+  $('#send-error-text').textContent =
+    status === 409
+      ? 'No event is selected, so this wish has nowhere to go. Ask the organiser to select one in settings, then tap Try again.'
+      : "That didn't save. Please check the connection and try again.";
   $('#send-error').hidden = false;
 }
 
@@ -251,10 +263,21 @@ function goFullscreen() {
   if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
   else el.webkitRequestFullscreen?.();
 }
-$('#start').addEventListener('click', () => {
+$('#start').addEventListener('click', async () => {
   goFullscreen();
+  await loadConfig();
+  if (!state.config.event) return showHome();
   countdown();
 });
+
+// Hidden way into settings for the organiser: hold the names for 3 seconds.
+let holdTimer = null;
+$('.names').addEventListener('pointerdown', () => {
+  holdTimer = setTimeout(() => (location.href = '/settings/'), 3000);
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach((e) =>
+  $('.names').addEventListener(e, () => clearTimeout(holdTimer))
+);
 
 // ---------- gallery ----------
 
@@ -265,12 +288,13 @@ $('#watch').addEventListener('click', () => {
 });
 
 // Called by the gallery's "Start recording" button and its idle timer.
-window.closeGallery = (startRecording) => {
+window.closeGallery = async (startRecording) => {
   const frame = $('#gallery');
   frame.hidden = true;
   frame.src = 'about:blank';
-  if (startRecording) countdown();
-  else show('welcome');
+  await loadConfig();
+  if (startRecording && state.config.event) countdown();
+  else showHome();
 };
 $('#stop').addEventListener('click', stopRecording);
 $('#play').addEventListener('click', () => {
@@ -296,11 +320,11 @@ $('#retry').addEventListener('click', send);
   await loadConfig();
   if (!(await startCamera())) return;
   // "Start recording" in the gallery comes back here and goes straight to the countdown.
-  if (new URLSearchParams(location.search).has('start')) {
+  if (new URLSearchParams(location.search).has('start') && state.config.event) {
     history.replaceState(null, '', '/');
     keepAwake();
     countdown();
   } else {
-    show('welcome');
+    showHome();
   }
 })();

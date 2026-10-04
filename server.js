@@ -1,8 +1,8 @@
 // Wedding Wish Booth server.
 //
-// Runs on the laptop. The tablet opens the booth page over the local wifi,
-// records a wish, and uploads it here. Every wish is saved in ./wishes and
-// listed in ./wishes/index.json. Nothing leaves the laptop.
+// Runs on the laptop (or on the tablet itself under Termux). The booth page
+// records a wish and uploads it here. Each wish is saved in the folder of the
+// selected event (see lib/events.js). Nothing leaves the device.
 
 const fs = require('fs');
 const path = require('path');
@@ -13,37 +13,11 @@ const express = require('express');
 const multer = require('multer');
 const qrcode = require('qrcode-terminal');
 const { ensureCertificates, CA_CERT } = require('./lib/certs');
+const { createStore } = require('./lib/events');
 
 const ROOT = __dirname;
-const WISHES_DIR = path.join(ROOT, 'wishes');
-const INDEX_FILE = path.join(WISHES_DIR, 'index.json');
 const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
-
-fs.mkdirSync(WISHES_DIR, { recursive: true });
-
-// ---------- wish index ----------
-
-function readIndex() {
-  try {
-    return JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8'));
-  } catch {
-    return [];
-  }
-}
-
-// Writes are queued so two uploads finishing together can't clobber each other,
-// and go through a temp file so a crash never leaves a half-written index.
-let writeQueue = Promise.resolve();
-function addToIndex(entry) {
-  writeQueue = writeQueue.then(() => {
-    const list = readIndex();
-    list.push(entry);
-    const tmp = `${INDEX_FILE}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(list, null, 2));
-    fs.renameSync(tmp, INDEX_FILE);
-  });
-  return writeQueue;
-}
+const events = createStore(ROOT, config);
 
 function timestamp(d) {
   const p = (n) => String(n).padStart(2, '0');
@@ -68,28 +42,67 @@ const app = express();
 app.disable('x-powered-by');
 app.use(express.json());
 
+// The booth's settings come from the selected event; `event` is null until
+// one is selected, and the booth won't record until then.
 app.get('/api/config', (req, res) => {
   res.json({
-    couple: config.couple,
-    date: config.date,
-    welcomeLine: config.welcomeLine,
-    accent: config.accent,
-    maxSeconds: config.maxSeconds,
+    event: events.get(events.activeId()),
     httpsPort: config.httpsPort,
     pinRequired: Boolean(config.galleryPin),
   });
 });
 
+// ---------- events ----------
+
+app.get('/api/events', (req, res) => {
+  res.json({ active: events.activeId(), events: events.list(), defaults: events.defaults, folder: events.dataDir });
+});
+
+app.post('/api/events', (req, res) => {
+  try {
+    const event = events.create(req.body || {});
+    events.setActive(event.id);
+    console.log(`  ✦ created event "${event.couple}" in ${events.dir(event.id)}`);
+    res.json(event);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/events/:id', (req, res) => {
+  try {
+    const event = events.update(req.params.id, req.body || {});
+    if (!event) return res.status(404).json({ error: 'no such event' });
+    res.json(event);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/events/:id/select', (req, res) => {
+  if (!events.setActive(req.params.id)) return res.status(404).json({ error: 'no such event' });
+  console.log(`  ✦ recording into "${events.get(req.params.id).couple}"`);
+  res.json({ ok: true });
+});
+
 const upload = multer({
   storage: multer.diskStorage({
-    destination: WISHES_DIR,
+    destination: (req, file, cb) => cb(null, events.dir(req.eventId)),
     filename: (req, file, cb) => cb(null, `.upload-${crypto.randomUUID()}`),
   }),
   limits: { fileSize: 500 * 1024 * 1024, files: 2 },
 });
 
+// Pin the upload to the event selected when it starts.
+function requireEvent(req, res, next) {
+  req.eventId = events.activeId();
+  if (!req.eventId) return res.status(409).json({ error: 'no event selected' });
+  next();
+}
+
 app.post(
   '/api/wishes',
+  requireEvent,
   upload.fields([
     { name: 'video', maxCount: 1 },
     { name: 'thumb', maxCount: 1 },
@@ -107,11 +120,14 @@ app.post(
       const ext = /mp4/.test(video.mimetype) || /\.mp4$/i.test(video.originalname) ? 'mp4' : 'webm';
       const base = `${timestamp(now)}_wish_${crypto.randomBytes(2).toString('hex')}`;
 
-      fs.renameSync(video.path, path.join(WISHES_DIR, `${base}.${ext}`));
+      const folder = events.dir(req.eventId);
+      fs.renameSync(video.path, path.join(folder, `${base}.${ext}`));
       let thumbFile = null;
       if (thumb && thumb.size > 0) {
         thumbFile = `${base}.jpg`;
-        fs.renameSync(thumb.path, path.join(WISHES_DIR, thumbFile));
+        fs.renameSync(thumb.path, path.join(folder, thumbFile));
+      } else if (thumb) {
+        fs.rmSync(thumb.path, { force: true });
       }
 
       const entry = {
@@ -122,8 +138,8 @@ app.post(
         thumb: thumbFile,
         mimeType: `video/${ext}`,
       };
-      await addToIndex(entry);
-      console.log(`  ♡ saved a wish (${(video.size / 1e6).toFixed(1)} MB)`);
+      await events.addWish(req.eventId, entry);
+      console.log(`  ♡ saved a wish to ${req.eventId} (${(video.size / 1e6).toFixed(1)} MB)`);
       res.json({ ok: true, id: entry.id });
     } catch (err) {
       console.error('Failed to save wish:', err);
@@ -142,16 +158,20 @@ app.post('/api/login', (req, res) => {
   res.status(401).json({ error: 'wrong pin' });
 });
 
+// Wishes of the selected event, or of ?event=<id> to look back at another one.
 app.get('/api/wishes', requireGallery, (req, res) => {
-  res.json(readIndex().slice().reverse());
+  const id = req.query.event || events.activeId();
+  const event = events.get(id);
+  if (!event) return res.json({ event: null, wishes: [] });
+  res.json({ event, wishes: events.readIndex(id).slice().reverse() });
 });
 
-// Videos and thumbnails, with range requests so seeking is instant.
-app.use(
-  '/media',
-  requireGallery,
-  express.static(WISHES_DIR, { index: false, dotfiles: 'ignore', fallthrough: false })
-);
+// Videos and thumbnails at /media/<event id>/<file>, with range requests so
+// seeking is instant.
+app.use('/media/:event', requireGallery, (req, res, next) => {
+  if (!events.exists(req.params.event)) return res.sendStatus(404);
+  express.static(events.dir(req.params.event), { index: false, dotfiles: 'ignore', fallthrough: false })(req, res, next);
+});
 
 app.get('/wish-booth-ca.crt', (req, res) => {
   res.type('application/x-x509-ca-cert').sendFile(CA_CERT);
@@ -179,7 +199,9 @@ async function start() {
     console.log(`  First-time tablet setup:     ${setupUrl}`);
   }
   if (ips.length > 1) console.log(`  Other addresses on this laptop: ${ips.slice(1).join(', ')}`);
-  console.log(`  Wishes are saved in:         ${WISHES_DIR}\n`);
+  console.log(`  Event folders are in:        ${events.dataDir}`);
+  const active = events.get(events.activeId());
+  console.log(active ? `  Recording into:              ${active.couple} (${active.id})\n` : '  No event selected yet: open /settings to create one.\n');
   if (!ips.length) return;
   console.log('  Scan with the tablet to open the setup page:\n');
   qrcode.generate(setupUrl, { small: true });

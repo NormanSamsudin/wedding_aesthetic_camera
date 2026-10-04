@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Booth Settings</title>
+  <style>
+    :root { --bg: #FAF7F2; --ink: #2B2724; --mute: #8C847C; --line: #E6DFD6; --accent: #B08D57; --warn: #B5523B; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; }
+    h1 { font: 400 40px Georgia, serif; margin: 0 0 4px; }
+    h2 { font: 400 26px Georgia, serif; margin: 40px 0 12px; }
+    .lead { color: var(--mute); margin: 0 0 24px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px 24px; }
+    .current { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .current .what { flex: 1; min-width: 220px; }
+    .label { font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--mute); margin: 0; }
+    .names { font: 26px Georgia, serif; margin: 4px 0 0; }
+    .warn { color: var(--warn); }
+    button, .btn { font: 600 14px -apple-system, 'Segoe UI', Roboto, sans-serif; letter-spacing: .08em; text-transform: uppercase;
+      padding: 14px 22px; border-radius: 999px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg);
+      text-decoration: none; display: inline-block; cursor: pointer; }
+    .ghost { background: transparent; color: var(--ink); }
+    .small-btn { padding: 9px 14px; font-size: 12px; }
+    button:disabled { opacity: .4; cursor: default; }
+    .events { display: flex; flex-direction: column; gap: 10px; }
+    .event { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .event .info { flex: 1; min-width: 200px; }
+    .event .title { font: 20px Georgia, serif; }
+    .event .meta { color: var(--mute); font-size: 14px; }
+    .event.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+    .badge { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); padding: 9px 4px; }
+    form { display: grid; gap: 16px; }
+    label { display: grid; gap: 6px; font-size: 14px; color: var(--mute); }
+    input { font: 18px -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+    input[type=color] { padding: 4px; height: 50px; width: 90px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .row > label { flex: 1; min-width: 160px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .error { color: var(--warn); margin: 0; }
+    .folder { color: var(--mute); font-size: 14px; margin-top: 36px; word-break: break-all; }
+    .empty { color: var(--mute); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Booth settings</h1>
+  <p class="lead">Pick the event to record into. Each event keeps its videos in its own folder.</p>
+
+  <div class="card current">
+    <div class="what" id="current"></div>
+    <a class="btn" id="open-booth" href="/">Open the booth</a>
+  </div>
+
+  <h2>Events</h2>
+  <div class="events" id="events"></div>
+
+  <h2 id="form-title">New event</h2>
+  <form class="card" id="form">
+    <label>Names
+      <input name="couple" required maxlength="80" placeholder="Aisyah & Norman">
+    </label>
+    <div class="row">
+      <label>Date
+        <input name="date" maxlength="40" placeholder="12 · 12 · 2026">
+      </label>
+      <label>Line above the names
+        <input name="welcomeLine" maxlength="80">
+      </label>
+    </div>
+    <div class="row">
+      <label>Accent colour
+        <input name="accent" type="color">
+      </label>
+      <label>Longest wish (seconds)
+        <input name="maxSeconds" type="number" min="10" max="300" step="5">
+      </label>
+    </div>
+    <p class="error" id="error" hidden></p>
+    <div class="actions">
+      <button id="save">Create and select</button>
+      <button type="button" class="ghost" id="cancel" hidden>Cancel</button>
+    </div>
+  </form>
+
+  <p class="folder" id="folder"></p>
+</main>
+<script>
+  const $ = (s) => document.querySelector(s);
+  let state = { events: [], active: null, defaults: {} };
+  let editing = null;
+
+  async function load() {
+    state = await (await fetch('/api/events', { cache: 'no-store' })).json();
+    render();
+  }
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function render() {
+    const active = state.events.find((e) => e.id === state.active);
+    const cur = $('#current');
+    cur.replaceChildren();
+    if (active) {
+      cur.append(el('p', 'label', 'Recording into'), el('p', 'names', active.couple));
+    } else {
+      cur.append(el('p', 'label warn', 'No event selected'), el('p', 'names', 'Create or select an event below'));
+    }
+    $('#open-booth').hidden = !active;
+
+    const list = $('#events');
+    list.replaceChildren();
+    if (!state.events.length) list.append(el('p', 'empty', 'No events yet.'));
+    for (const ev of state.events) {
+      const row = el('div', `card event${ev.id === state.active ? ' on' : ''}`);
+      const info = el('div', 'info');
+      info.append(el('div', 'title', ev.couple));
+      const n = ev.wishes;
+      info.append(el('div', 'meta', [ev.date, n === 1 ? '1 wish' : `${n} wishes`].filter(Boolean).join(' · ')));
+      row.append(info);
+      if (ev.id === state.active) row.append(el('span', 'badge', 'Selected'));
+      else {
+        const pick = el('button', 'small-btn', 'Select');
+        pick.onclick = () => select(ev.id);
+        row.append(pick);
+      }
+      const edit = el('button', 'small-btn ghost', 'Edit');
+      edit.onclick = () => startEdit(ev);
+      const view = el('a', 'btn small-btn ghost', 'Wishes');
+      view.href = `/gallery/?event=${encodeURIComponent(ev.id)}`;
+      row.append(edit, view);
+      list.append(row);
+    }
+    $('#folder').textContent = `Event folders are saved in ${state.folder}`;
+    if (!editing) fillForm(state.defaults);
+  }
+
+  function fillForm(values) {
+    const f = $('#form');
+    f.couple.value = values.couple || '';
+    f.date.value = values.date || '';
+    f.welcomeLine.value = values.welcomeLine || state.defaults.welcomeLine || '';
+    f.accent.value = values.accent || state.defaults.accent || '#B08D57';
+    f.maxSeconds.value = values.maxSeconds || state.defaults.maxSeconds || 60;
+  }
+
+  function startEdit(ev) {
+    editing = ev.id;
+    fillForm(ev);
+    $('#form-title').textContent = `Edit ${ev.couple}`;
+    $('#save').textContent = 'Save changes';
+    $('#cancel').hidden = false;
+    $('#form').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function stopEdit() {
+    editing = null;
+    $('#form-title').textContent = 'New event';
+    $('#save').textContent = 'Create and select';
+    $('#cancel').hidden = true;
+    fillForm(state.defaults);
+  }
+  $('#cancel').onclick = stopEdit;
+
+  async function select(id) {
+    await fetch(`/api/events/${encodeURIComponent(id)}/select`, { method: 'POST' });
+    load();
+  }
+
+  $('#form').onsubmit = async (e) => {
+    e.preventDefault();
+    const body = Object.fromEntries(new FormData(e.target));
+    const res = await fetch(editing ? `/api/events/${encodeURIComponent(editing)}` : '/api/events', {
+      method: editing ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const out = await res.json();
+    $('#error').hidden = res.ok;
+    if (!res.ok) return ($('#error').textContent = out.error || 'Could not save.');
+    stopEdit();
+    load();
+  };
+
+  load();
+</script>
+</body>
+</html>
