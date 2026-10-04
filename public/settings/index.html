@@ -42,11 +42,29 @@
     .error { color: var(--warn); margin: 0; }
     .folder { color: var(--mute); font-size: 14px; margin-top: 36px; word-break: break-all; }
     .empty { color: var(--mute); }
+    textarea { font: 16px/1.5 -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); min-height: 120px; resize: vertical; }
+    select { font: 18px -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+    .hint { font-size: 13px; color: var(--mute); }
+    .meter { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 10px 0 6px; }
+    .meter b { display: block; height: 100%; background: var(--accent); }
+    .meter.low b { background: var(--warn); }
+    .lock-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .lock-row input { width: 160px; letter-spacing: .3em; }
+    .gate { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; }
+    .gate form { display: grid; gap: 14px; justify-items: center; text-align: center; }
+    .gate input { width: 220px; text-align: center; font-size: 28px; letter-spacing: .4em; }
+    .gate a { color: var(--mute); font-size: 14px; }
+    .top { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+    .top .spacer { flex: 1; }
   </style>
 </head>
 <body>
 <main>
-  <h1>Booth settings</h1>
+  <div class="top">
+    <h1>Booth settings</h1>
+    <span class="spacer"></span>
+    <button type="button" class="ghost small-btn" id="lock-now" hidden>Lock</button>
+  </div>
   <p class="lead">Pick the event to record into. Each event keeps its videos in its own folder.</p>
 
   <div class="card current">
@@ -77,7 +95,17 @@
       <label>Longest wish (seconds)
         <input name="maxSeconds" type="number" min="10" max="300" step="5">
       </label>
+      <label>Booth language
+        <select name="language">
+          <option value="ms">Bahasa Melayu</option>
+          <option value="en">English</option>
+        </select>
+      </label>
     </div>
+    <label>Ideas shown while guests record (one per line)
+      <textarea name="prompts" maxlength="1000"></textarea>
+      <span class="hint" id="prompt-hint"></span>
+    </label>
     <p class="error" id="error" hidden></p>
     <div class="actions">
       <button id="save">Create and select</button>
@@ -85,16 +113,122 @@
     </div>
   </form>
 
+  <h2>Storage</h2>
+  <div class="card" id="storage"></div>
+
+  <h2>Settings PIN</h2>
+  <div class="card">
+    <p class="meta" id="lock-state"></p>
+    <form class="lock-row" id="pin-set">
+      <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" placeholder="4–8 digits" autocomplete="new-password">
+      <button class="small-btn" id="pin-save">Set PIN</button>
+      <button type="button" class="small-btn ghost" id="pin-remove" hidden>Remove PIN</button>
+    </form>
+    <p class="error" id="pin-set-error" hidden></p>
+  </div>
+
   <p class="folder" id="folder"></p>
 </main>
+
+<div class="gate" id="gate" hidden>
+  <form id="gate-form">
+    <h1>Booth settings</h1>
+    <input id="gate-pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off">
+    <button>Unlock</button>
+    <p class="error" id="gate-error" hidden></p>
+    <a href="/">Back to the booth</a>
+  </form>
+</div>
 <script>
   const $ = (s) => document.querySelector(s);
   let state = { events: [], active: null, defaults: {} };
   let editing = null;
 
   async function load() {
-    state = await (await fetch('/api/events', { cache: 'no-store' })).json();
+    const res = await fetch('/api/events', { cache: 'no-store' });
+    if (res.status === 401) return showGate();
+    state = await res.json();
+    $('#gate').hidden = true;
+    const lock = await (await fetch('/api/settings', { cache: 'no-store' })).json();
+    renderLock(lock.locked);
     render();
+  }
+
+  function showGate() {
+    $('#gate').hidden = false;
+    $('#gate-pin').value = '';
+    $('#gate-pin').focus();
+  }
+
+  $('#gate-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const res = await fetch('/api/settings/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: $('#gate-pin').value }),
+    });
+    if (!res.ok) {
+      $('#gate-error').textContent = (await res.json()).error;
+      $('#gate-error').hidden = false;
+      $('#gate-pin').value = '';
+      return;
+    }
+    $('#gate-error').hidden = true;
+    load();
+  };
+
+  $('#lock-now').onclick = async () => {
+    await fetch('/api/settings/logout', { method: 'POST' });
+    showGate();
+  };
+
+  function renderLock(locked) {
+    $('#lock-state').textContent = locked
+      ? 'Settings are locked with a PIN. Guests holding the names on the booth will be asked for it.'
+      : 'Anyone at the booth can open settings by holding the names for 3 seconds. Set a PIN to keep guests out.';
+    $('#pin-save').textContent = locked ? 'Change PIN' : 'Set PIN';
+    $('#pin-remove').hidden = !locked;
+    $('#lock-now').hidden = !locked;
+  }
+
+  async function savePin(pin) {
+    const res = await fetch('/api/settings/pin', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin }),
+    });
+    const out = await res.json();
+    $('#pin-set-error').hidden = res.ok;
+    if (!res.ok) return ($('#pin-set-error').textContent = out.error);
+    $('#pin-set').pin.value = '';
+    renderLock(out.locked);
+  }
+  $('#pin-set').onsubmit = (e) => {
+    e.preventDefault();
+    savePin(e.target.pin.value);
+  };
+  $('#pin-remove').onclick = () => savePin('');
+
+  const gb = (bytes) => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  function renderStorage(space) {
+    const box = $('#storage');
+    box.replaceChildren();
+    if (!space) return box.append(el('p', 'meta', "Couldn't read the free space of this folder."));
+    const used = 1 - space.free / space.total;
+    const meter = el('div', `meter${space.low ? ' low' : ''}`);
+    const fill = el('b');
+    fill.style.width = `${Math.round(used * 100)}%`;
+    meter.append(fill);
+    // About 0.33 MB a second at the booth's recording quality.
+    const active = state.events.find((e) => e.id === state.active);
+    const secs = active?.maxSeconds || state.defaults.maxSeconds || 60;
+    const left = Math.floor(space.free / (secs * 0.33 * 1e6));
+    box.append(
+      el('p', `names${space.low ? ' warn' : ''}`, `${gb(space.free)} free`),
+      meter,
+      el('p', 'meta', `of ${gb(space.total)}. Room for about ${left.toLocaleString()} more ${secs}-second wishes.`)
+    );
+    if (space.low) box.append(el('p', 'warn', 'Running low. The booth shows a small "storage almost full" note. Free some space or copy old event folders off the tablet.'));
   }
 
   function el(tag, cls, text) {
@@ -123,7 +257,9 @@
       const info = el('div', 'info');
       info.append(el('div', 'title', ev.couple));
       const n = ev.wishes;
-      info.append(el('div', 'meta', [ev.date, n === 1 ? '1 wish' : `${n} wishes`].filter(Boolean).join(' · ')));
+      const lang = ev.language === 'ms' ? 'Bahasa Melayu' : 'English';
+      const hidden = ev.hidden ? `${ev.hidden} hidden` : '';
+      info.append(el('div', 'meta', [ev.date, n === 1 ? '1 wish' : `${n} wishes`, hidden, lang].filter(Boolean).join(' · ')));
       row.append(info);
       if (ev.id === state.active) row.append(el('span', 'badge', 'Selected'));
       else {
@@ -134,11 +270,12 @@
       const edit = el('button', 'small-btn ghost', 'Edit');
       edit.onclick = () => startEdit(ev);
       const view = el('a', 'btn small-btn ghost', 'Wishes');
-      view.href = `/gallery/?event=${encodeURIComponent(ev.id)}`;
+      view.href = `/settings/wishes.html?event=${encodeURIComponent(ev.id)}`;
       row.append(edit, view);
       list.append(row);
     }
     $('#folder').textContent = `Event folders are saved in ${state.folder}`;
+    renderStorage(state.storage);
     if (!editing) fillForm(state.defaults);
   }
 
@@ -149,7 +286,35 @@
     f.welcomeLine.value = values.welcomeLine || state.defaults.welcomeLine || '';
     f.accent.value = values.accent || state.defaults.accent || '#B08D57';
     f.maxSeconds.value = values.maxSeconds || state.defaults.maxSeconds || 60;
+    // Events from before languages existed are English.
+    f.language.value = values.language || (values.couple ? 'en' : state.defaults.language) || 'ms';
+    f.prompts.value = (values.prompts || []).join('\n');
+    if (!values.couple) matchWelcome();
+    promptHint();
   }
+
+  // Swap the line above the names when the language changes, unless it was
+  // changed by hand.
+  const WELCOME = { ms: 'Walimatulurus', en: 'Welcome to the wedding of' };
+  function matchWelcome() {
+    const f = $('#form');
+    if (Object.values(WELCOME).includes(f.welcomeLine.value)) f.welcomeLine.value = WELCOME[f.language.value];
+  }
+
+  // Leaving the ideas empty uses the built-in ones in the booth's language.
+  const BUILT_IN = {
+    ms: 'Kongsikan doa dan harapan anda untuk pengantin',
+    en: 'Share a prayer or a wish for the couple',
+  };
+  function promptHint() {
+    const f = $('#form');
+    f.prompts.placeholder = `Leave empty to use the built-in ideas, like "${BUILT_IN[f.language.value]}"`;
+    $('#prompt-hint').textContent = 'They change every few seconds over the camera.';
+  }
+  $('#form').language.onchange = () => {
+    matchWelcome();
+    promptHint();
+  };
 
   function startEdit(ev) {
     editing = ev.id;

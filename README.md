@@ -24,7 +24,7 @@ Optionally edit `config.json`:
 | Setting | What it does |
 | --- | --- |
 | `dataDir` | Where event folders are saved. Leave `""` for the default (see [Events](#events)). |
-| `welcomeLine`, `accent`, `maxSeconds` | Starting values for new events. |
+| `welcomeLine`, `accent`, `maxSeconds`, `language` | Starting values for new events (`language` is `"ms"` or `"en"`). |
 | `galleryPin` | Set a PIN to lock the gallery. Leave `""` (the default) so guests can open it from the booth without a PIN. |
 
 The names, date and colour are set per event in the settings page, not here.
@@ -78,9 +78,12 @@ Every wedding (or any occasion) is an **event** with its own folder. The booth w
 
 Open **`/settings`** on the booth (for example `http://localhost:3000/settings`), or hold the names on the booth's welcome screen for three seconds. There you can:
 
-- create an event with its names, date, line above the names, accent colour and longest wish length (creating one also selects it),
+- create an event with its names, date, line above the names, accent colour, longest wish length, booth language (Bahasa Melayu or English) and the ideas shown while guests record (creating one also selects it),
 - select which event the booth records into,
-- edit an event, or open its wishes.
+- edit an event,
+- open **Wishes** to watch an event's wishes and hide any you don't want in the gallery (the video stays in the folder, and you can show it again),
+- see how much space is left,
+- set a **PIN** so guests can't open settings. If you forget it, delete `lock.json` from the folder that holds the event folders.
 
 Each wish is saved to the selected event's folder the moment a guest taps **Send**:
 
@@ -101,8 +104,10 @@ The gallery shows the selected event. To look back at another event, tap **Wishe
 ## Good to know
 
 - Videos are recorded as MP4 when the browser supports it (iPads and recent Chrome), which plays everywhere. Older Android Chrome records WebM, which plays in Chrome, Edge and Firefox but not Safari.
-- If a save fails (for example the wifi drops), the guest sees **Try again** and the recording is kept, so they don't have to record again.
+- If a save fails (for example the wifi drops or Termux is stopped), the wish is kept in the tablet's browser and the guest still gets a thank-you. The booth sends it every 30 seconds until the server is back, with the time it was recorded, and the welcome screen shows how many are waiting. Don't clear Chrome's site data while any are waiting.
+- When less than 1 GB is free, the welcome screen shows a small "storage almost full" note. Settings shows the free space and roughly how many more wishes fit.
+- While counting down and recording, an idea of what to say fades in and changes every few seconds. Leave an event's ideas empty to use the built-in ones in its language.
 - The booth goes back to the welcome screen if a guest leaves the review screen for a minute, and after each thank-you screen.
 - Guests can tap **Watch the wishes** on the booth's welcome screen to browse the gallery, and **Start recording** to go straight back into the countdown. The gallery opens inside the booth page, so the tablet stays full screen and the camera stays on. It returns to the booth by itself after two minutes without a touch (unless a wish is playing).
-- Gallery sessions: Morning 5 am to 12 pm, Afternoon 12 pm to 5 pm, Evening 5 pm to 9 pm, Night 9 pm to 5 am (a 1 am wish counts as the night before). Change them in `SESSIONS` at the top of `public/gallery/gallery.js`.
+- Gallery sessions: Morning 5 am to 12 pm, Afternoon 12 pm to 5 pm, Evening 5 pm to 9 pm, Night 9 pm to 5 am (a 1 am wish counts as the night before). Change the hours in `SESSIONS` in `public/gallery/gallery.js`, and the words in `public/i18n.js`.
 - `events/`, `wishes/` and `certs/` are in `.gitignore`, so guest videos and your private key are never committed. Wishes recorded before events existed stay in `wishes/` and aren't shown in the gallery.

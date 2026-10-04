@@ -3,9 +3,12 @@
 const $ = (sel) => document.querySelector(sel);
 const IDLE_RESET_MS = 60_000;
 const THANKS_MS = 6_000;
+const PROMPT_MS = 6_000;
+const FLUSH_MS = 30_000;
 
 const state = {
   config: { maxSeconds: 60 },
+  text: window.TEXT.en,
   stream: null,
   recorder: null,
   chunks: [],
@@ -13,6 +16,7 @@ const state = {
   thumb: null,
   mimeType: '',
   startedAt: 0,
+  recordedAt: '',
   durationMs: 0,
 };
 
@@ -69,7 +73,7 @@ async function loadConfig() {
   try {
     state.config = await (await fetch('/api/config', { cache: 'no-store' })).json();
   } catch {}
-  // Names, colour and max length come from the selected event.
+  // Names, colour, language and max length come from the selected event.
   const c = state.config.event || {};
   if (c.accent) document.documentElement.style.setProperty('--accent', c.accent);
   document.querySelectorAll('[data-text]').forEach((el) => {
@@ -77,6 +81,50 @@ async function loadConfig() {
     if (el.dataset.text === 'couple') renderCouple(el, value);
     else el.textContent = value;
   });
+  state.text = window.textFor(state.config.event);
+  window.applyText(state.text);
+  updateNotice();
+}
+
+// Quiet line at the bottom of the welcome screen for the organiser.
+async function updateNotice() {
+  const notes = [];
+  if (state.config.lowStorage) notes.push(state.text.lowStorage);
+  const waiting = await window.wishQueue.count();
+  if (waiting) notes.push(state.text.waiting(waiting));
+  $('#notice').textContent = notes.join(' · ');
+  $('#notice').hidden = !notes.length;
+}
+
+// ---------- prompts ----------
+
+// While counting down and recording, show an idea of what to say, changing
+// every few seconds. The event's own prompts win over the built-in ones.
+let promptTimer = null;
+function startPrompts() {
+  clearInterval(promptTimer);
+  const own = state.config.event?.prompts;
+  const list = own?.length ? own : state.text.prompts;
+  let i = Math.floor(Math.random() * list.length);
+  const els = document.querySelectorAll('[data-prompt]');
+  els.forEach((el) => {
+    el.classList.remove('fading');
+    el.textContent = list[i];
+  });
+  if (list.length < 2) return;
+  promptTimer = setInterval(() => {
+    i = (i + 1) % list.length;
+    els.forEach((el) => el.classList.add('fading'));
+    setTimeout(() => {
+      els.forEach((el) => {
+        el.textContent = list[i];
+        el.classList.remove('fading');
+      });
+    }, 600);
+  }, PROMPT_MS);
+}
+function stopPrompts() {
+  clearInterval(promptTimer);
 }
 
 // ---------- camera ----------
@@ -154,6 +202,7 @@ function captureThumb() {
 
 function countdown() {
   show('countdown');
+  startPrompts();
   let n = 3;
   const el = $('#count');
   el.textContent = n;
@@ -185,6 +234,7 @@ function startRecording() {
   recorder.start(1000);
   state.recorder = recorder;
   state.startedAt = performance.now();
+  state.recordedAt = new Date().toISOString();
 
   show('recording');
   setTimeout(captureThumb, 1500);
@@ -201,6 +251,7 @@ function startRecording() {
 
 function stopRecording() {
   clearInterval(recordTimer);
+  stopPrompts();
   if (state.recorder && state.recorder.state !== 'inactive') state.recorder.stop();
 }
 
@@ -225,6 +276,7 @@ function send() {
 
   const form = new FormData();
   form.append('durationMs', String(state.durationMs));
+  form.append('recordedAt', state.recordedAt);
   const ext = state.blob.type.includes('mp4') ? 'mp4' : 'webm';
   form.append('video', state.blob, `wish.${ext}`);
   if (state.thumb) form.append('thumb', state.thumb, 'thumb.jpg');
@@ -234,24 +286,39 @@ function send() {
   xhr.upload.onprogress = (e) => {
     if (e.lengthComputable) $('#progress').style.width = `${(e.loaded / e.total) * 100}%`;
   };
-  xhr.onload = () => (xhr.status === 200 ? thanks() : failed(xhr.status));
-  xhr.onerror = failed;
+  xhr.onload = () => (xhr.status === 200 ? thanks(false) : failed(xhr.status));
+  xhr.onerror = () => failed(0);
   xhr.send(form);
 }
 
-function failed(status) {
-  // The recording stays in memory, so the guest can retry without re-recording.
-  $('#send-error-text').textContent =
-    status === 409
-      ? 'No event is selected, so this wish has nowhere to go. Ask the organiser to select one in settings, then tap Try again.'
-      : "That didn't save. Please check the connection and try again.";
+async function failed(status) {
+  // No event selected: only the organiser can fix that, so keep the
+  // recording in memory and let the guest retry.
+  if (status !== 409) {
+    // The server is down or couldn't save: keep the wish on the tablet and
+    // send it later, so the guest isn't left waiting.
+    try {
+      await window.wishQueue.add({
+        video: state.blob,
+        thumb: state.thumb,
+        durationMs: state.durationMs,
+        recordedAt: state.recordedAt,
+      });
+      return thanks(true);
+    } catch {}
+  }
+  $('#send-error-text').textContent = status === 409 ? state.text.noEvent : state.text.saveFailed;
   $('#send-error').hidden = false;
 }
 
-function thanks() {
+function thanks(later) {
+  $('#thanks-note').textContent = later ? state.text.savedLater : state.text.saved;
   show('thanks');
   setTimeout(reset, THANKS_MS);
+  if (!later) window.wishQueue.flush().then(updateNotice);
 }
+
+setInterval(() => window.wishQueue.flush().then(updateNotice), FLUSH_MS);
 
 // ---------- wiring ----------
 
@@ -308,6 +375,7 @@ $('#playback').addEventListener('click', () => {
 });
 $('#retake').addEventListener('click', () => {
   $('#playback').pause();
+  stopPrompts();
   countdown();
 });
 $('#send').addEventListener('click', () => {
@@ -318,6 +386,7 @@ $('#retry').addEventListener('click', send);
 
 (async () => {
   await loadConfig();
+  window.wishQueue.flush().then(updateNotice);
   if (!(await startCamera())) return;
   // "Start recording" in the gallery comes back here and goes straight to the countdown.
   if (new URLSearchParams(location.search).has('start') && state.config.event) {

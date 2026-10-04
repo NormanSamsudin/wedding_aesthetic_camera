@@ -2,6 +2,7 @@
   "welcomeLine": "Welcome to the wedding of",
   "accent": "#B08D57",
   "maxSeconds": 60,
+  "language": "ms",
   "dataDir": "",
   "galleryPin": "",
   "httpsPort": 3443,

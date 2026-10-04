@@ -11,14 +11,14 @@
   <header class="nav">
     <span class="logo" id="logo"></span>
     <nav class="filters">
-      <button class="filter on" data-filter="all">All</button>
-      <button class="filter" data-filter="morning">Morning</button>
-      <button class="filter" data-filter="afternoon">Afternoon</button>
-      <button class="filter" data-filter="evening">Evening</button>
-      <button class="filter" data-filter="night">Night</button>
+      <button class="filter on" data-filter="all" data-i18n="all">All</button>
+      <button class="filter" data-filter="morning" data-i18n="morning">Morning</button>
+      <button class="filter" data-filter="afternoon" data-i18n="afternoon">Afternoon</button>
+      <button class="filter" data-filter="evening" data-i18n="evening">Evening</button>
+      <button class="filter" data-filter="night" data-i18n="night">Night</button>
     </nav>
     <span class="spacer"></span>
-    <a class="to-booth" href="/?start=1">Start recording</a>
+    <a class="to-booth" href="/?start=1" data-i18n="start">Start recording</a>
   </header>
 
   <main id="home">
@@ -26,31 +26,31 @@
       <video id="hero-video" muted playsinline preload="auto"></video>
       <div class="shade"></div>
       <div class="hero-text">
-        <p class="kicker">Featured wish</p>
+        <p class="kicker" data-i18n="featured">Featured wish</p>
         <h1 class="hero-title">Doa-doa yang baik buat pengantin</h1>
-        <p class="hero-desc">A wish for the newlyweds, recorded at the booth.</p>
-        <button class="b white" id="hero-play"><span class="tri"></span>Play</button>
-        <button class="b grey" id="play-all">Play all wishes</button>
+        <p class="hero-desc" data-i18n="heroDesc">A wish for the newlyweds, recorded at the booth.</p>
+        <button class="b white" id="hero-play"><span class="tri"></span><span data-i18n="play">Play</span></button>
+        <button class="b grey" id="play-all" data-i18n="playAll">Play all wishes</button>
       </div>
     </section>
     <div id="rows" class="rows"></div>
   </main>
 
   <div id="empty" class="empty" hidden>
-    <p class="kicker">No wishes yet</p>
-    <p>They will appear here as guests record them at the booth.</p>
+    <p class="kicker" data-i18n="noWishes">No wishes yet</p>
+    <p data-i18n="noWishesNote">They will appear here as guests record them at the booth.</p>
   </div>
 
   <div id="player" class="player" hidden>
     <video id="player-video" controls playsinline></video>
     <div class="player-top">
-      <button class="back" id="close">&larr; Back to wishes</button>
+      <button class="back" id="close" data-i18n="backToWishes">&larr; Back to wishes</button>
       <span class="player-name" id="player-name"></span>
     </div>
     <button class="nav-arrow prev" id="prev" aria-label="Previous wish">&#8249;</button>
     <button class="nav-arrow next" id="next" aria-label="Next wish">&#8250;</button>
     <div class="up-next" id="up-next" hidden>
-      <p>Up next</p>
+      <p data-i18n="upNext">Up next</p>
       <div class="tile" id="up-next-tile"></div>
     </div>
   </div>
@@ -64,6 +64,7 @@
     </form>
   </div>
 
+  <script src="/i18n.js"></script>
   <script src="/gallery/gallery.js"></script>
 </body>
 </html>

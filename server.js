@@ -14,10 +14,25 @@ const multer = require('multer');
 const qrcode = require('qrcode-terminal');
 const { ensureCertificates, CA_CERT } = require('./lib/certs');
 const { createStore } = require('./lib/events');
+const { createLock } = require('./lib/lock');
 
 const ROOT = __dirname;
 const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
 const events = createStore(ROOT, config);
+const lock = createLock(events.dataDir);
+
+// Below this much free space the booth shows a quiet warning.
+const LOW_STORAGE_BYTES = 1024 ** 3;
+
+function storage() {
+  try {
+    const s = fs.statfsSync(events.dataDir);
+    const free = s.bavail * s.bsize;
+    return { free, total: s.blocks * s.bsize, low: free < LOW_STORAGE_BYTES };
+  } catch {
+    return null;
+  }
+}
 
 function timestamp(d) {
   const p = (n) => String(n).padStart(2, '0');
@@ -36,6 +51,16 @@ function requireGallery(req, res, next) {
   res.status(401).json({ error: 'pin required' });
 }
 
+// ---------- settings PIN ----------
+
+const settingsAllowed = (req) => lock.allows(readCookie(req, 'settings'));
+function requireSettings(req, res, next) {
+  if (settingsAllowed(req)) return next();
+  res.status(401).json({ error: 'settings are locked' });
+}
+const setSettingsCookie = (res, token) =>
+  res.setHeader('Set-Cookie', `settings=${token}; Path=/; HttpOnly; SameSite=Strict`);
+
 // ---------- app ----------
 
 const app = express();
@@ -49,13 +74,68 @@ app.get('/api/config', (req, res) => {
     event: events.get(events.activeId()),
     httpsPort: config.httpsPort,
     pinRequired: Boolean(config.galleryPin),
+    lowStorage: Boolean(storage()?.low),
   });
+});
+
+// ---------- settings ----------
+
+app.get('/api/settings', (req, res) => {
+  res.json({ locked: lock.isSet(), allowed: settingsAllowed(req) });
+});
+
+app.post('/api/settings/login', (req, res) => {
+  const { token, wait } = lock.login(req.body?.pin);
+  if (wait) return res.status(429).json({ error: `Too many tries. Wait ${wait} seconds.` });
+  if (!token) return res.status(401).json({ error: "That PIN didn't match." });
+  setSettingsCookie(res, token);
+  res.json({ ok: true });
+});
+
+app.post('/api/settings/logout', (req, res) => {
+  lock.logout(readCookie(req, 'settings'));
+  res.json({ ok: true });
+});
+
+app.put('/api/settings/pin', requireSettings, (req, res) => {
+  const pin = String(req.body?.pin ?? '').trim();
+  try {
+    lock.setPin(pin, readCookie(req, 'settings'));
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  // Keep the person who set the PIN signed in.
+  if (pin) setSettingsCookie(res, lock.login(pin).token);
+  console.log(pin ? '  ✦ settings PIN set' : '  ✦ settings PIN removed');
+  res.json({ ok: true, locked: Boolean(pin) });
 });
 
 // ---------- events ----------
 
+app.use('/api/events', requireSettings);
+
 app.get('/api/events', (req, res) => {
-  res.json({ active: events.activeId(), events: events.list(), defaults: events.defaults, folder: events.dataDir });
+  res.json({
+    active: events.activeId(),
+    events: events.list(),
+    defaults: events.defaults,
+    folder: events.dataDir,
+    storage: storage(),
+  });
+});
+
+// Every wish of one event, hidden ones included, for managing them.
+app.get('/api/events/:id/wishes', (req, res) => {
+  const event = events.get(req.params.id);
+  if (!event) return res.status(404).json({ error: 'no such event' });
+  res.json({ event, wishes: events.readIndex(event.id).slice().reverse() });
+});
+
+app.put('/api/events/:id/wishes/:wish', async (req, res) => {
+  if (!events.exists(req.params.id)) return res.status(404).json({ error: 'no such event' });
+  const found = await events.setHidden(req.params.id, req.params.wish, Boolean(req.body?.hidden));
+  if (!found) return res.status(404).json({ error: 'no such wish' });
+  res.json({ ok: true });
 });
 
 app.post('/api/events', (req, res) => {
@@ -115,7 +195,13 @@ app.post(
         if (thumb) fs.rmSync(thumb.path, { force: true });
         return res.status(400).json({ error: 'no video received' });
       }
+      // A wish kept on the tablet while the server was down is sent later with
+      // the time it was recorded.
       const now = new Date();
+      const recorded = new Date(req.body.recordedAt);
+      if (!Number.isNaN(recorded.getTime()) && recorded <= now.getTime() + 5 * 60_000 && recorded >= now.getTime() - 14 * 86_400_000) {
+        now.setTime(recorded.getTime());
+      }
       // Some browsers send the upload as text/plain, so check the file name too.
       const ext = /mp4/.test(video.mimetype) || /\.mp4$/i.test(video.originalname) ? 'mp4' : 'webm';
       const base = `${timestamp(now)}_wish_${crypto.randomBytes(2).toString('hex')}`;
@@ -158,18 +244,24 @@ app.post('/api/login', (req, res) => {
   res.status(401).json({ error: 'wrong pin' });
 });
 
-// Wishes of the selected event, or of ?event=<id> to look back at another one.
+// Wishes of the selected event. Looking back at another event with
+// ?event=<id> needs the settings PIN, if one is set.
+const otherEvent = (req, id) => id !== events.activeId() && !settingsAllowed(req);
+
 app.get('/api/wishes', requireGallery, (req, res) => {
   const id = req.query.event || events.activeId();
+  if (otherEvent(req, id)) return res.status(401).json({ error: 'settings are locked' });
   const event = events.get(id);
   if (!event) return res.json({ event: null, wishes: [] });
-  res.json({ event, wishes: events.readIndex(id).slice().reverse() });
+  const wishes = events.readIndex(id).filter((w) => !w.hidden).reverse();
+  res.json({ event, wishes });
 });
 
 // Videos and thumbnails at /media/<event id>/<file>, with range requests so
 // seeking is instant.
 app.use('/media/:event', requireGallery, (req, res, next) => {
   if (!events.exists(req.params.event)) return res.sendStatus(404);
+  if (otherEvent(req, req.params.event)) return res.sendStatus(401);
   express.static(events.dir(req.params.event), { index: false, dotfiles: 'ignore', fallthrough: false })(req, res, next);
 });
 
@@ -201,7 +293,10 @@ async function start() {
   if (ips.length > 1) console.log(`  Other addresses on this laptop: ${ips.slice(1).join(', ')}`);
   console.log(`  Event folders are in:        ${events.dataDir}`);
   const active = events.get(events.activeId());
-  console.log(active ? `  Recording into:              ${active.couple} (${active.id})\n` : '  No event selected yet: open /settings to create one.\n');
+  console.log(active ? `  Recording into:              ${active.couple} (${active.id})` : '  No event selected yet: open /settings to create one.');
+  const space = storage();
+  if (space) console.log(`  Free space:                  ${(space.free / 1024 ** 3).toFixed(1)} GB${space.low ? ' (running low)' : ''}`);
+  console.log('');
   if (!ips.length) return;
   console.log('  Scan with the tablet to open the setup page:\n');
   qrcode.generate(setupUrl, { small: true });
