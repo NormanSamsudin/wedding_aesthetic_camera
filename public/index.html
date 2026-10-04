@@ -20,18 +20,22 @@
       <h1 class="names" data-text="couple"></h1>
       <div class="rule"></div>
       <p class="small" data-text="date"></p>
-      <button class="btn" id="start">Start recording</button>
-      <button class="link" id="watch">Watch the wishes</button>
+      <button class="btn" id="start" data-i18n="start">Start recording</button>
+      <button class="link" id="watch" data-i18n="watch">Watch the wishes</button>
     </div>
+    <!-- Quiet notes for the organiser: low storage, wishes not sent yet. -->
+    <p class="notice" id="notice" hidden></p>
   </section>
 
   <section id="s-countdown" class="screen live">
     <div id="count" class="count">3</div>
-    <div class="bar"><span class="small light">Get ready, look at the camera</span></div>
+    <p class="prompt" data-prompt></p>
+    <div class="bar"><span class="small light" data-i18n="getReady">Get ready, look at the camera</span></div>
   </section>
 
   <section id="s-recording" class="screen live">
     <div class="pill"><span class="dot"></span><span id="timer">00:00</span></div>
+    <p class="prompt" data-prompt></p>
     <div class="bar"><button id="stop" class="stop" aria-label="Stop recording"><i></i></button></div>
   </section>
 
@@ -39,18 +43,18 @@
     <video id="playback" class="cam unmirrored" playsinline></video>
     <button id="play" class="play" aria-label="Play"></button>
     <div class="bar">
-      <button class="btn glass" id="retake">Re-record</button>
-      <button class="btn" id="send">Send wish</button>
+      <button class="btn glass" id="retake" data-i18n="retake">Re-record</button>
+      <button class="btn" id="send" data-i18n="send">Send wish</button>
     </div>
   </section>
 
   <section id="s-sending" class="screen paper">
     <div class="center">
-      <p class="small">Saving your wish</p>
+      <p class="small" data-i18n="saving">Saving your wish</p>
       <div class="progress"><b id="progress"></b></div>
       <div id="send-error" hidden>
         <p class="note" id="send-error-text"></p>
-        <button class="btn" id="retry">Try again</button>
+        <button class="btn" id="retry" data-i18n="tryAgain">Try again</button>
       </div>
     </div>
   </section>
@@ -58,9 +62,9 @@
   <section id="s-thanks" class="screen paper">
     <div class="center">
       <div class="heart">&#9825;</div>
-      <h2 class="title" id="thanks-title">Thank you</h2>
+      <h2 class="title" id="thanks-title" data-i18n="thanks">Thank you</h2>
       <div class="rule"></div>
-      <p class="small">Your wish has been saved</p>
+      <p class="small" id="thanks-note">Your wish has been saved</p>
     </div>
   </section>
 
@@ -85,6 +89,8 @@
        and the camera stays on. -->
   <iframe id="gallery" class="gallery-frame" title="Wishes" allow="autoplay; fullscreen" allowfullscreen hidden></iframe>
 
+  <script src="/i18n.js"></script>
+  <script src="/queue.js"></script>
   <script src="/booth.js"></script>
 </body>
 </html>

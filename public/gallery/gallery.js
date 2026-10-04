@@ -7,6 +7,7 @@ const BOOTH_IDLE_MS = 2 * 60_000;
 
 let wishes = []; // newest first
 let event = null; // the event whose wishes are showing
+let T = window.TEXT.en; // its language
 
 // ?event=<id> looks back at another event; otherwise the selected one.
 const pinned = new URLSearchParams(location.search).get('event');
@@ -30,8 +31,10 @@ async function load() {
   event = next.event;
   wishes = event ? next.wishes : [];
   if (!sameEvent) {
+    T = window.textFor(event);
+    window.applyText(T);
     $('#logo').textContent = event?.couple || '';
-    document.title = event ? `Wishes for ${event.couple}` : 'Wishes';
+    document.title = event ? T.wishesFor(event.couple) : 'Wishes';
   }
   if (changed) render();
   return true;
@@ -53,7 +56,7 @@ function tile(w, list) {
   if (age >= 0 && age < NEW_FOR_MS) {
     const tag = document.createElement('span');
     tag.className = 'new';
-    tag.textContent = 'NEW';
+    tag.textContent = T.newTag;
     el.append(tag);
   }
   const label = document.createElement('span');
@@ -92,10 +95,10 @@ function row(title, list) {
 // Sessions of the day. Night runs past midnight, so a 1 am wish still
 // counts as the night before.
 const SESSIONS = [
-  { key: 'morning', label: 'Morning', from: 5, to: 12 },
-  { key: 'afternoon', label: 'Afternoon', from: 12, to: 17 },
-  { key: 'evening', label: 'Evening', from: 17, to: 21 },
-  { key: 'night', label: 'Night', from: 21, to: 29 },
+  { key: 'morning', from: 5, to: 12 },
+  { key: 'afternoon', from: 12, to: 17 },
+  { key: 'evening', from: 17, to: 21 },
+  { key: 'night', from: 21, to: 29 },
 ];
 function sessionOf(w) {
   const h = new Date(w.createdAt).getHours();
@@ -123,8 +126,8 @@ function sessionRows(list) {
   }
   return [...groups.entries()].map(([key, items]) => {
     const [day, session] = key.split('|');
-    const label = SESSIONS.find((s) => s.key === session).label;
-    const prefix = multiDay ? `${new Date(day).toLocaleDateString([], { weekday: 'long' })} ` : '';
+    const label = T[session];
+    const prefix = multiDay ? `${new Date(day).toLocaleDateString(T.locale, { weekday: 'long' })} ` : '';
     return row(`${prefix}${multiDay ? label.toLowerCase() : label}`, items);
   });
 }
@@ -134,14 +137,14 @@ function render() {
   $('#home').hidden = !wishes.length;
   document.querySelectorAll('.filter').forEach((b) => b.classList.toggle('on', b.dataset.filter === filter));
   if (filter === 'all') {
-    $('#rows').replaceChildren(...[row('Just in', wishes.slice(0, 15)), ...sessionRows(wishes)].filter(Boolean));
+    $('#rows').replaceChildren(...[row(T.justIn, wishes.slice(0, 15)), ...sessionRows(wishes)].filter(Boolean));
   } else {
     const list = wishes.filter((w) => sessionOf(w) === filter);
     const rows = sessionRows(list);
     if (!rows.length) {
       const p = document.createElement('p');
       p.className = 'none';
-      p.textContent = `No wishes in the ${filter} yet.`;
+      p.textContent = T.noneInSession(T[filter]);
       rows.push(p);
     }
     $('#rows').replaceChildren(...rows);

@@ -194,3 +194,31 @@ body.live .frame { opacity: 1; }
   background: #141210;
 }
 .gallery-frame[hidden] { display: none; }
+
+/* A gentle idea of what to say, over the camera while counting down and recording. */
+.prompt {
+  position: fixed;
+  left: 50%;
+  bottom: 200px;
+  transform: translateX(-50%);
+  width: min(720px, 86vw);
+  margin: 0;
+  font: italic 400 clamp(22px, 3vw, 30px)/1.35 var(--serif);
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .55);
+  transition: opacity .6s;
+}
+.prompt.fading { opacity: 0; }
+#s-countdown .prompt { bottom: 140px; }
+
+.notice {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  margin: 0;
+  font: 500 13px var(--sans);
+  letter-spacing: .08em;
+  color: var(--mute);
+}
+.notice[hidden] { display: none; }

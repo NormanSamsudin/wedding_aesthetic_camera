@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manage Wishes</title>
+  <style>
+    :root { --bg: #FAF7F2; --ink: #2B2724; --mute: #8C847C; --line: #E6DFD6; --accent: #B08D57; --warn: #B5523B; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+    a.back { color: var(--mute); text-decoration: none; font-size: 15px; }
+    h1 { font: 400 36px Georgia, serif; margin: 8px 0 4px; }
+    .lead { color: var(--mute); margin: 0 0 24px; }
+    .top { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
+    .top .lead { flex: 1; margin: 0; }
+    .btn { font: 600 13px -apple-system, 'Segoe UI', Roboto, sans-serif; letter-spacing: .08em; text-transform: uppercase;
+      padding: 10px 16px; border-radius: 999px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg);
+      text-decoration: none; display: inline-block; cursor: pointer; }
+    .ghost { background: transparent; color: var(--ink); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .wish { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .wish.off { opacity: .5; }
+    .thumb { aspect-ratio: 16 / 9; background: #2b2724 center / cover no-repeat; position: relative; cursor: pointer; border: 0; width: 100%; display: block; }
+    .thumb::after { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-35%, -50%);
+      border-left: 22px solid rgba(255, 255, 255, .9); border-top: 14px solid transparent; border-bottom: 14px solid transparent; }
+    .info { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+    .info .when { flex: 1; font-size: 14px; color: var(--mute); }
+    .tag { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--warn); }
+    .empty { color: var(--mute); }
+    .viewer { position: fixed; inset: 0; background: rgba(0, 0, 0, .9); display: flex; align-items: center; justify-content: center; }
+    .viewer video { max-width: 92vw; max-height: 84vh; }
+    .viewer button { position: absolute; top: 20px; right: 20px; }
+  </style>
+</head>
+<body>
+<main>
+  <a class="back" href="/settings/">&larr; Settings</a>
+  <h1 id="title">Wishes</h1>
+  <div class="top">
+    <p class="lead">Hide a wish to take it out of the gallery. Its video stays in the event folder, and you can show it again any time.</p>
+    <a class="btn ghost" id="gallery">Open the gallery</a>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<div class="viewer" id="viewer" hidden>
+  <video id="viewer-video" controls playsinline></video>
+  <button class="btn" id="viewer-close">Close</button>
+</div>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const id = new URLSearchParams(location.search).get('event');
+  const media = (file) => `/media/${encodeURIComponent(id)}/${encodeURIComponent(file)}`;
+  const when = (w) =>
+    new Date(w.createdAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  const length = (w) => (w.durationMs ? `${Math.round(w.durationMs / 1000)}s` : '');
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  async function load() {
+    const res = await fetch(`/api/events/${encodeURIComponent(id)}/wishes`, { cache: 'no-store' });
+    if (res.status === 401) return (location.href = '/settings/');
+    if (!res.ok) return $('#grid').replaceChildren(el('p', 'empty', 'That event was not found.'));
+    const { event, wishes } = await res.json();
+    $('#title').textContent = `Wishes for ${event.couple}`;
+    $('#gallery').href = `/gallery/?event=${encodeURIComponent(id)}`;
+    const grid = $('#grid');
+    grid.replaceChildren();
+    if (!wishes.length) grid.append(el('p', 'empty', 'No wishes yet.'));
+    for (const w of wishes) {
+      const card = el('div', `wish${w.hidden ? ' off' : ''}`);
+      const thumb = el('button', 'thumb');
+      thumb.setAttribute('aria-label', 'Play');
+      if (w.thumb) thumb.style.backgroundImage = `url("${media(w.thumb)}")`;
+      thumb.onclick = () => play(w);
+      const info = el('div', 'info');
+      info.append(el('span', 'when', [when(w), length(w)].filter(Boolean).join(' · ')));
+      if (w.hidden) info.append(el('span', 'tag', 'Hidden'));
+      const toggle = el('button', 'btn ghost', w.hidden ? 'Show' : 'Hide');
+      toggle.onclick = () => setHidden(w, !w.hidden);
+      info.append(toggle);
+      card.append(thumb, info);
+      grid.append(card);
+    }
+  }
+
+  async function setHidden(w, hidden) {
+    await fetch(`/api/events/${encodeURIComponent(id)}/wishes/${encodeURIComponent(w.id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hidden }),
+    });
+    load();
+  }
+
+  function play(w) {
+    const v = $('#viewer-video');
+    v.src = media(w.video);
+    $('#viewer').hidden = false;
+    v.play().catch(() => {});
+  }
+  $('#viewer-close').onclick = () => {
+    $('#viewer-video').pause();
+    $('#viewer-video').removeAttribute('src');
+    $('#viewer').hidden = true;
+  };
+
+  load();
+</script>
+</body>
+</html>
