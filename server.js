@@ -67,11 +67,13 @@ const app = express();
 app.disable('x-powered-by');
 app.use(express.json());
 
+const withBackground = (event) => event && { ...event, background: events.backgroundUrl(event.id) };
+
 // The booth's settings come from the selected event; `event` is null until
 // one is selected, and the booth won't record until then.
 app.get('/api/config', (req, res) => {
   res.json({
-    event: events.get(events.activeId()),
+    event: withBackground(events.get(events.activeId())),
     httpsPort: config.httpsPort,
     pinRequired: Boolean(config.galleryPin),
     lowStorage: Boolean(storage()?.low),
@@ -117,7 +119,7 @@ app.use('/api/events', requireSettings);
 app.get('/api/events', (req, res) => {
   res.json({
     active: events.activeId(),
-    events: events.list(),
+    events: events.list().map(withBackground),
     defaults: events.defaults,
     folder: events.dataDir,
     storage: storage(),
@@ -157,6 +159,21 @@ app.put('/api/events/:id', (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// Background photo for the booth screens, sent as a JPEG body.
+app.put('/api/events/:id/background', express.raw({ type: 'image/jpeg', limit: '15mb' }), (req, res) => {
+  const jpeg = req.body;
+  if (!Buffer.isBuffer(jpeg) || jpeg.length < 4 || jpeg[0] !== 0xff || jpeg[1] !== 0xd8) {
+    return res.status(400).json({ error: 'send the photo as a JPEG' });
+  }
+  if (!events.setBackground(req.params.id, jpeg)) return res.status(404).json({ error: 'no such event' });
+  res.json({ ok: true, background: events.backgroundUrl(req.params.id) });
+});
+
+app.delete('/api/events/:id/background', (req, res) => {
+  if (!events.setBackground(req.params.id, null)) return res.status(404).json({ error: 'no such event' });
+  res.json({ ok: true, background: events.backgroundUrl(req.params.id) });
 });
 
 app.post('/api/events/:id/select', (req, res) => {
@@ -263,6 +280,15 @@ app.use('/media/:event', requireGallery, (req, res, next) => {
   if (!events.exists(req.params.event)) return res.sendStatus(404);
   if (otherEvent(req, req.params.event)) return res.sendStatus(401);
   express.static(events.dir(req.params.event), { index: false, dotfiles: 'ignore', fallthrough: false })(req, res, next);
+});
+
+// The booth's backdrop. Open like the booth itself, but another event's
+// photo needs the settings PIN, as with its wishes.
+app.get('/backdrop/:event', (req, res) => {
+  if (otherEvent(req, req.params.event)) return res.sendStatus(401);
+  const file = events.backgroundFile(req.params.event);
+  if (!file) return res.sendStatus(404);
+  res.sendFile(file, { maxAge: '1y' });
 });
 
 app.get('/wish-booth-ca.crt', (req, res) => {

@@ -26,6 +26,8 @@ let idleTimer = null;
 function show(id) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `s-${id}`));
   document.body.classList.toggle('live', id === 'countdown' || id === 'recording');
+  // The photo goes soft behind the camera window and the glass cards.
+  document.body.classList.toggle('soft', !['welcome', 'no-event', 'blocked'].includes(id));
   clearTimeout(idleTimer);
   // Walk-away safety: screens waiting on a guest go back to the start.
   if (id === 'review') {
@@ -75,7 +77,11 @@ async function loadConfig() {
   } catch {}
   // Names, colour, language and max length come from the selected event.
   const c = state.config.event || {};
-  if (c.accent) document.documentElement.style.setProperty('--accent', c.accent);
+  const root = document.documentElement.style;
+  if (c.accent) root.setProperty('--accent', c.accent);
+  // The event's own photo, or the sample photo until one is uploaded.
+  root.setProperty('--photo', `url("${c.background || '/bg-default.jpg'}")`);
+  root.setProperty('--dim', String((c.dim ?? 35) / 100));
   document.querySelectorAll('[data-text]').forEach((el) => {
     const value = c[el.dataset.text] || '';
     if (el.dataset.text === 'couple') renderCouple(el, value);

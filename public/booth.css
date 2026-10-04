@@ -23,31 +23,76 @@ html, body {
   touch-action: manipulation;
 }
 
-.cam {
+/* One unit that scales with the screen: 1% of the width on a 16:10 tablet. */
+:root {
+  --u: min(1vw, 1.6vh);
+  --dim: .35;
+  --photo: url('/bg-default.jpg');
+  --win-w: 62vw;
+  --win-h: 70vh;
+  --win-top: 6vh;
+  --win-bottom: calc(var(--win-top) + var(--win-h));
+}
+@media (orientation: portrait) {
+  :root { --u: min(1.6vw, 1vh); --win-w: 88vw; --win-h: 56vh; --win-top: 8vh; }
+}
+
+/* The event's photo, sharp on the welcome screen and softened while the camera shows. */
+.backdrop {
   position: fixed;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1);
-  background: #8f8478;
+  background: #8b7464 var(--photo) center / cover no-repeat;
+  transition: filter .5s, transform .5s;
 }
-.cam.unmirrored { transform: none; }
-
-.frame {
+body.soft .backdrop { filter: blur(10px); transform: scale(1.06); }
+.shade {
   position: fixed;
-  inset: 22px;
-  border: 1px solid rgba(255, 255, 255, .7);
-  border-radius: 8px;
-  pointer-events: none;
+  inset: 0;
+  background: linear-gradient(180deg,
+    rgba(24, 18, 12, calc(var(--dim) - .05)) 0%,
+    rgba(24, 18, 12, var(--dim)) 45%,
+    rgba(24, 18, 12, calc(var(--dim) + .2)) 100%);
+}
+
+/* Camera and playback sit in a framed window over the photo. */
+.cam, .window {
+  position: fixed;
+  left: calc(50vw - var(--win-w) / 2);
+  top: var(--win-top);
+  width: var(--win-w);
+  height: var(--win-h);
+  object-fit: cover;
+  border-radius: calc(var(--u) * 2);
+  border: 1px solid rgba(255, 255, 255, .6);
+  box-shadow: 0 calc(var(--u) * 2) calc(var(--u) * 5) rgba(0, 0, 0, .35);
+  background: #2b2420;
+}
+.cam {
+  transform: scaleX(-1);
   opacity: 0;
+  visibility: hidden;
   transition: opacity .3s;
 }
-body.live .frame { opacity: 1; }
+body.live .cam { opacity: 1; visibility: visible; z-index: 1; }
+
+/* Frosted glass for every button and card that sits on the photo. */
+.glass {
+  background: linear-gradient(140deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .08) 60%, rgba(255, 255, 255, .14));
+  -webkit-backdrop-filter: blur(calc(var(--u) * 1.6)) saturate(150%);
+  backdrop-filter: blur(calc(var(--u) * 1.6)) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, .55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .65), 0 calc(var(--u) * 1.6) calc(var(--u) * 4) rgba(10, 6, 2, .32);
+  color: #fff;
+  font-family: var(--sans);
+  cursor: pointer;
+}
+/* `scale` stacks with the centring transforms below instead of replacing them. */
+button.glass:active { scale: .97; }
 
 .screen {
   position: fixed;
   inset: 0;
+  z-index: 2;
   display: none;
   align-items: center;
   justify-content: center;
@@ -55,9 +100,7 @@ body.live .frame { opacity: 1; }
 }
 .screen.active > * { animation: fade .35s ease; }
 .screen.active { display: flex; }
-.screen.soft { background: rgba(250, 247, 242, .78); backdrop-filter: blur(2px); }
 .screen.paper { background: var(--bg); }
-.screen.dark { background: #000; }
 @keyframes fade { from { opacity: 0; } }
 
 .center { display: flex; flex-direction: column; align-items: center; padding: 24px; }
@@ -73,10 +116,108 @@ body.live .frame { opacity: 1; }
 .small.light { color: #fff; text-shadow: 0 1px 8px rgba(0, 0, 0, .4); }
 .names { font-weight: 400; font-size: clamp(40px, 6vw, 64px); margin: 18px 0 4px; letter-spacing: .01em; }
 .names .amp { color: var(--accent); font-style: italic; }
+
 .title { font-weight: 400; font-size: clamp(28px, 4vw, 40px); margin: 16px 0 0; }
 .note { font: 18px/1.5 var(--sans); color: var(--mute); }
 .rule { width: 56px; height: 1px; background: var(--accent); margin: 22px auto; }
 .heart { color: var(--accent); font-size: 52px; line-height: 1; }
+
+/* ---------- welcome: names on top, one big glass button in the centre ---------- */
+#s-welcome { color: #fff; text-shadow: 0 2px 16px rgba(0, 0, 0, .35); }
+.welcome-top {
+  position: absolute;
+  top: 8%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.welcome-top .small { font-size: max(12px, calc(var(--u) * 1.25)); letter-spacing: .32em; }
+#s-welcome .names { font-size: calc(var(--u) * 6.6); line-height: 1; margin: calc(var(--u) * .8) 0 0; }
+#s-welcome .names .amp, .heart { color: color-mix(in srgb, var(--accent) 45%, #fff); }
+.welcome-top .rule, .card .rule { background: color-mix(in srgb, var(--accent) 60%, #fff); margin: calc(var(--u) * 1.4) auto 0; }
+.card .rule { margin-bottom: calc(var(--u) * 1.4); }
+.cta {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--u) * 21);
+  height: calc(var(--u) * 21);
+  margin: calc(var(--u) * -10.5) 0 0 calc(var(--u) * -10.5);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 1.1);
+  font: 600 max(13px, calc(var(--u) * 1.55)) var(--sans);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+.cta::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--u) * -1.6);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .4);
+  animation: ring 2.8s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes ring { 0% { transform: scale(.94); opacity: .9; } 100% { transform: scale(1.14); opacity: 0; } }
+.rec-icon {
+  width: calc(var(--u) * 4.6);
+  height: calc(var(--u) * 4.6);
+  border-radius: 50%;
+  border: calc(var(--u) * .35) solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rec-icon::before {
+  content: '';
+  width: calc(var(--u) * 2.3);
+  height: calc(var(--u) * 2.3);
+  border-radius: 50%;
+  background: var(--rec);
+  box-shadow: 0 0 calc(var(--u) * 1.4) rgba(228, 101, 95, .7);
+}
+.welcome-bottom {
+  position: absolute;
+  bottom: 8%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 1.6);
+}
+.date { margin: 0; font: 400 max(18px, calc(var(--u) * 2)) var(--serif); letter-spacing: .14em; }
+.watch {
+  font: 600 max(12px, calc(var(--u) * 1.15)) var(--sans);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  padding: max(10px, calc(var(--u) * .9)) max(22px, calc(var(--u) * 2.2));
+  border-radius: 999px;
+  text-shadow: none;
+}
+
+/* ---------- thank you and saving: a glass card in the centre ---------- */
+.card {
+  width: min(560px, calc(var(--u) * 44), 88vw);
+  padding: calc(var(--u) * 4.4) calc(var(--u) * 3);
+  border-radius: calc(var(--u) * 2.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: default;
+}
+.card .title { color: #fff; font-family: var(--serif); font-size: max(36px, calc(var(--u) * 5)); margin: calc(var(--u) * .8) 0 0; }
+.card .note { color: rgba(255, 255, 255, .85); }
+.card .heart { font-size: max(40px, calc(var(--u) * 5)); }
+.card .progress { background: rgba(255, 255, 255, .3); }
+.card #retry { margin-top: 8px; }
 
 
 .btn {
@@ -92,94 +233,113 @@ body.live .frame { opacity: 1; }
   text-decoration: none;
   display: inline-block;
 }
-#s-welcome .btn { margin-top: 40px; }
 #s-no-event .btn { margin-top: 28px; }
-.link {
-  margin-top: 22px;
-  background: none;
-  border: 0;
-  padding: 14px 28px;
-  font: 600 14px var(--sans);
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--ink);
-  text-decoration: none;
-  border-bottom: 1px solid var(--accent);
-}
-.btn.ghost { background: transparent; color: var(--ink); }
-.btn.glass { background: rgba(255, 255, 255, .25); border-color: rgba(255, 255, 255, .7); color: #fff; backdrop-filter: blur(6px); }
 .btn:active { transform: scale(.97); }
-
-
-
 
 .bar {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 44px;
+  padding: 4vh 24px;
   display: flex;
   justify-content: center;
-  align-items: center;
-  gap: 18px;
 }
 
+/* ---------- countdown and recording ---------- */
+.count-ring {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--win-top) + var(--win-h) / 2);
+  width: calc(var(--u) * 17);
+  height: calc(var(--u) * 17);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
 .count {
-  font: 200px/1 var(--serif);
+  font: calc(var(--u) * 9)/1 var(--serif);
   color: #fff;
-  text-shadow: 0 4px 40px rgba(0, 0, 0, .3);
   animation: pop 1s ease infinite;
 }
 @keyframes pop { 0% { transform: scale(.7); opacity: 0; } 25% { transform: scale(1); opacity: 1; } }
 
 .pill {
   position: fixed;
-  top: 44px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(255, 255, 255, .92);
+  left: calc(50vw - var(--win-w) / 2 + var(--u) * 1.6);
+  top: calc(var(--win-top) + var(--u) * 1.6);
   border-radius: 999px;
-  padding: 10px 20px;
-  font: 600 18px var(--sans);
+  padding: calc(var(--u) * .6) calc(var(--u) * 1.4);
+  font: 500 max(14px, calc(var(--u) * 1.35)) var(--sans);
   font-variant-numeric: tabular-nums;
   display: flex;
-  gap: 10px;
+  gap: calc(var(--u) * .8);
   align-items: center;
+  cursor: default;
 }
-.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--rec); animation: blink 1.2s infinite; }
+.dot { width: calc(var(--u) * 1); height: calc(var(--u) * 1); border-radius: 50%; background: var(--rec); animation: blink 1.2s infinite; }
 @keyframes blink { 50% { opacity: .3; } }
 
+/* Centred under the guest's face so it never covers them. */
 .stop {
-  width: 92px;
-  height: 92px;
+  position: fixed;
+  left: 50%;
+  top: calc(var(--win-bottom) + 3vh);
+  width: calc(var(--u) * 11);
+  height: calc(var(--u) * 11);
+  transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 4px solid #fff;
-  background: rgba(0, 0, 0, .15);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.stop i { width: 32px; height: 32px; border-radius: 5px; background: var(--rec); }
+.stop i { width: calc(var(--u) * 3.4); height: calc(var(--u) * 3.4); border-radius: calc(var(--u) * .7); background: var(--rec); }
 
+/* ---------- review ---------- */
+.window { object-fit: cover; }
 .play {
-  position: relative;
-  width: 96px;
-  height: 96px;
+  position: fixed;
+  left: 50%;
+  top: calc(var(--win-top) + var(--win-h) / 2);
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 0;
-  background: rgba(255, 255, 255, .9);
 }
 .play::after {
   content: '';
   position: absolute;
-  left: 38px;
-  top: 28px;
-  border-left: 30px solid var(--ink);
-  border-top: 20px solid transparent;
-  border-bottom: 20px solid transparent;
+  left: 50%;
+  top: 50%;
+  margin: calc(var(--u) * -1.7) 0 0 calc(var(--u) * -1);
+  border-left: calc(var(--u) * 2.8) solid #fff;
+  border-top: calc(var(--u) * 1.7) solid transparent;
+  border-bottom: calc(var(--u) * 1.7) solid transparent;
 }
 .play[hidden] { display: none; }
+.pair {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--win-bottom) + 11vh);
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: calc(var(--u) * 2);
+}
+.pbtn {
+  font: 600 max(14px, calc(var(--u) * 1.5)) var(--sans);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  padding: max(16px, calc(var(--u) * 2)) max(28px, calc(var(--u) * 4.2));
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pbtn.gold {
+  background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 45%, rgba(255, 240, 210, .6)), color-mix(in srgb, var(--accent) 70%, transparent));
+  border-color: rgba(255, 234, 196, .8);
+}
 
 .progress { width: min(420px, 70vw); height: 3px; background: var(--line); border-radius: 2px; margin: 28px 0; overflow: hidden; }
 .progress b { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
@@ -195,21 +355,20 @@ body.live .frame { opacity: 1; }
 }
 .gallery-frame[hidden] { display: none; }
 
-/* A gentle idea of what to say, over the camera while counting down and recording. */
+/* A gentle idea of what to say, along the bottom of the camera window. */
 .prompt {
   position: fixed;
   left: 50%;
-  bottom: 200px;
+  bottom: calc(100vh - var(--win-bottom) + 7vh);
   transform: translateX(-50%);
-  width: min(720px, 86vw);
+  width: calc(var(--win-w) - var(--u) * 6);
   margin: 0;
-  font: italic 400 clamp(22px, 3vw, 30px)/1.35 var(--serif);
+  font: italic 400 max(20px, calc(var(--u) * 2.5))/1.25 var(--serif);
   color: #fff;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, .55);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .6);
   transition: opacity .6s;
 }
 .prompt.fading { opacity: 0; }
-#s-countdown .prompt { bottom: 140px; }
 
 .notice {
   position: fixed;
@@ -219,6 +378,12 @@ body.live .frame { opacity: 1; }
   margin: 0;
   font: 500 13px var(--sans);
   letter-spacing: .08em;
-  color: var(--mute);
+  color: rgba(255, 255, 255, .85);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .5);
 }
 .notice[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cta::after, .dot, .count { animation: none; }
+  .backdrop { transition: none; }
+}
