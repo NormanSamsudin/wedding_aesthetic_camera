@@ -166,16 +166,21 @@ async function start() {
   const ip = ips[0] || 'localhost';
 
   https.createServer({ cert, key }, app).listen(config.httpsPort);
-  // Plain http is only for the first-time setup page, which installs the
-  // certificate on the tablet.
+  // Plain http is for the first-time setup page, which installs the
+  // certificate on the tablet, and for running the booth on the tablet itself
+  // (browsers allow the camera on http://localhost).
   http.createServer(app).listen(config.httpPort);
 
   const setupUrl = `http://${ip}:${config.httpPort}/setup`;
   console.log('\n  Wedding Wish Booth is running\n');
-  console.log(`  Booth (open on the tablet):  https://${ip}:${config.httpsPort}/`);
-  console.log(`  First-time tablet setup:     ${setupUrl}`);
+  console.log(`  Booth on this device:        http://localhost:${config.httpPort}/`);
+  if (ips.length) {
+    console.log(`  Booth (open on the tablet):  https://${ip}:${config.httpsPort}/`);
+    console.log(`  First-time tablet setup:     ${setupUrl}`);
+  }
   if (ips.length > 1) console.log(`  Other addresses on this laptop: ${ips.slice(1).join(', ')}`);
   console.log(`  Wishes are saved in:         ${WISHES_DIR}\n`);
+  if (!ips.length) return;
   console.log('  Scan with the tablet to open the setup page:\n');
   qrcode.generate(setupUrl, { small: true });
 }

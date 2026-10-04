@@ -56,6 +56,22 @@ You only do this once per tablet. If the laptop later joins a different network,
 4. Keep the tablet charging and set its auto-lock to *Never*.
 5. Afterwards, copy the `wishes/` folder to a backup drive.
 
+## Or run everything on an Android tablet
+
+No laptop needed: run the server on the tablet with [Termux](https://github.com/termux/termux-app/releases) (install from F-Droid or GitHub, not the Play Store) and open `http://localhost:3000` in Chrome. Chrome allows the camera on `localhost`, so there is no certificate to install.
+
+```bash
+pkg update -y && pkg upgrade -y
+pkg install -y nodejs-lts git
+termux-setup-storage
+git clone https://github.com/NormanSamsudin/wedding_aesthetic_camera.git
+cd wedding_aesthetic_camera && npm install
+termux-wake-lock
+npm start
+```
+
+Set Termux's battery usage to *Unrestricted* so Android doesn't stop it. Afterwards copy the videos to the tablet's Download folder with `cp -r wishes ~/storage/shared/Download/wedding-wishes`.
+
 ## Where the wishes go
 
 Each wish is saved the moment a guest taps **Send** to `wishes/`:
