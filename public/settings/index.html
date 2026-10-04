@@ -55,6 +55,18 @@
     .gate input { width: 220px; text-align: center; font-size: 28px; letter-spacing: .4em; }
     .gate a { color: var(--mute); font-size: 14px; }
     .top { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+    .bg-field { display: grid; gap: 10px; }
+    .bg-field .name { font-size: 14px; color: var(--mute); }
+    .bg-preview { --pdim: .35; position: relative; width: min(100%, 440px); aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden;
+      background: #8b7464 center / cover no-repeat; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+    .bg-preview::before { content: ''; position: absolute; inset: 0; background: rgba(24, 18, 12, var(--pdim)); }
+    .bg-preview .tag { position: absolute; left: 10px; top: 10px; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+      color: #fff; background: rgba(0, 0, 0, .35); padding: 4px 10px; border-radius: 999px; }
+    .bg-preview .circle { position: relative; width: 26%; aspect-ratio: 1; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; text-align: center;
+      background: linear-gradient(140deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .08)); border: 1px solid rgba(255, 255, 255, .55);
+      -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+    input[type=range] { padding: 0; accent-color: var(--accent); max-width: 440px; }
     .top .spacer { flex: 1; }
   </style>
 </head>
@@ -101,6 +113,19 @@
           <option value="en">English</option>
         </select>
       </label>
+    </div>
+    <div class="bg-field">
+      <span class="name">Background photo</span>
+      <div class="bg-preview" id="bg-preview"><span class="tag" id="bg-tag">Sample photo</span><span class="circle">Start</span></div>
+      <div class="actions">
+        <button type="button" class="small-btn" id="bg-choose">Choose photo</button>
+        <button type="button" class="small-btn ghost" id="bg-remove" hidden>Use sample photo</button>
+        <input type="file" id="bg-file" accept="image/*" hidden>
+      </div>
+      <label>Dim the photo so the names stay readable
+        <input name="dim" id="dim" type="range" min="0" max="70" step="1">
+      </label>
+      <span class="hint">Shown behind every booth screen. Landscape photos work best. Without one, the booth uses the sample photo.</span>
     </div>
     <label>Ideas shown while guests record (one per line)
       <textarea name="prompts" maxlength="1000"></textarea>
@@ -289,6 +314,9 @@
     // Events from before languages existed are English.
     f.language.value = values.language || (values.couple ? 'en' : state.defaults.language) || 'ms';
     f.prompts.value = (values.prompts || []).join('\n');
+    f.dim.value = values.dim ?? 35;
+    bg = { file: null, remove: false, url: values.background || DEFAULT_BG };
+    showBackground();
     if (!values.couple) matchWelcome();
     promptHint();
   }
@@ -315,6 +343,55 @@
     matchWelcome();
     promptHint();
   };
+
+  // Background photo: chosen here, uploaded after the event is saved.
+  const DEFAULT_BG = '/bg-default.jpg';
+  let bg = { file: null, remove: false, url: DEFAULT_BG };
+  function showBackground() {
+    const sample = bg.url === DEFAULT_BG;
+    $('#bg-preview').style.backgroundImage = `url("${bg.url}")`;
+    $('#bg-preview').style.setProperty('--pdim', $('#dim').value / 100);
+    $('#bg-tag').textContent = sample ? 'Sample photo' : bg.file ? 'New photo, not saved yet' : 'This event\'s photo';
+    $('#bg-remove').hidden = sample;
+    $('#bg-choose').textContent = sample ? 'Choose photo' : 'Change photo';
+  }
+  $('#dim').oninput = showBackground;
+  $('#bg-choose').onclick = () => $('#bg-file').click();
+  $('#bg-remove').onclick = () => {
+    if (bg.url.startsWith('blob:')) URL.revokeObjectURL(bg.url);
+    bg = { file: null, remove: true, url: DEFAULT_BG };
+    showBackground();
+  };
+  // Shrink to at most 1920 px wide as a JPEG, so a phone photo doesn't fill the tablet.
+  async function toJpeg(file) {
+    const img = await createImageBitmap(file);
+    const scale = Math.min(1, 1920 / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.86));
+  }
+  $('#bg-file').onchange = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const jpeg = await toJpeg(file);
+      if (bg.url.startsWith('blob:')) URL.revokeObjectURL(bg.url);
+      bg = { file: jpeg, remove: false, url: URL.createObjectURL(jpeg) };
+      $('#error').hidden = true;
+      showBackground();
+    } catch {
+      $('#error').textContent = "That photo couldn't be opened. Try a JPEG or PNG.";
+      $('#error').hidden = false;
+    }
+  };
+  async function saveBackground(id) {
+    const url = `/api/events/${encodeURIComponent(id)}/background`;
+    if (bg.file) return fetch(url, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: bg.file });
+    if (bg.remove) return fetch(url, { method: 'DELETE' });
+  }
 
   function startEdit(ev) {
     editing = ev.id;
@@ -350,6 +427,14 @@
     const out = await res.json();
     $('#error').hidden = res.ok;
     if (!res.ok) return ($('#error').textContent = out.error || 'Could not save.');
+    const saved = await saveBackground(out.id);
+    if (saved && !saved.ok) {
+      await load();
+      startEdit(out);
+      $('#error').textContent = 'The event was saved, but the photo was not. Try choosing it again.';
+      $('#error').hidden = false;
+      return;
+    }
     stopEdit();
     load();
   };

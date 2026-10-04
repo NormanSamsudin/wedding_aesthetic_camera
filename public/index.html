@@ -10,61 +10,67 @@
   <link rel="stylesheet" href="/booth.css">
 </head>
 <body>
-  <!-- Live camera, shared by every screen. Mirrored like a mirror. -->
-  <video id="preview" class="cam" autoplay muted playsinline></video>
-  <div class="frame"></div>
+  <!-- The event's photo behind every screen, softened while the camera shows. -->
+  <div class="backdrop" aria-hidden="true"></div>
+  <div class="shade" aria-hidden="true"></div>
 
-  <section id="s-welcome" class="screen soft active">
-    <div class="center">
-      <p class="small" data-text="welcomeLine"></p>
+  <!-- Live camera, shown in a framed window while counting down and recording.
+       Mirrored like a mirror. -->
+  <video id="preview" class="cam" autoplay muted playsinline></video>
+
+  <section id="s-welcome" class="screen active">
+    <div class="welcome-top">
+      <p class="small light" data-text="welcomeLine"></p>
       <h1 class="names" data-text="couple"></h1>
       <div class="rule"></div>
-      <p class="small" data-text="date"></p>
-      <button class="btn" id="start" data-i18n="start">Start recording</button>
-      <button class="link" id="watch" data-i18n="watch">Watch the wishes</button>
+    </div>
+    <button class="glass cta" id="start"><i class="rec-icon"></i><span data-i18n="start">Start recording</span></button>
+    <div class="welcome-bottom">
+      <p class="date" data-text="date"></p>
+      <button class="glass watch" id="watch" data-i18n="watch">Watch the wishes</button>
     </div>
     <!-- Quiet notes for the organiser: low storage, wishes not sent yet. -->
     <p class="notice" id="notice" hidden></p>
   </section>
 
   <section id="s-countdown" class="screen live">
-    <div id="count" class="count">3</div>
+    <div class="glass count-ring"><div id="count" class="count">3</div></div>
     <p class="prompt" data-prompt></p>
     <div class="bar"><span class="small light" data-i18n="getReady">Get ready, look at the camera</span></div>
   </section>
 
   <section id="s-recording" class="screen live">
-    <div class="pill"><span class="dot"></span><span id="timer">00:00</span></div>
+    <div class="glass pill"><span class="dot"></span><span id="timer">00:00</span></div>
     <p class="prompt" data-prompt></p>
-    <div class="bar"><button id="stop" class="stop" aria-label="Stop recording"><i></i></button></div>
+    <button id="stop" class="glass stop" aria-label="Stop recording"><i></i></button>
   </section>
 
-  <section id="s-review" class="screen dark">
-    <video id="playback" class="cam unmirrored" playsinline></video>
-    <button id="play" class="play" aria-label="Play"></button>
-    <div class="bar">
-      <button class="btn glass" id="retake" data-i18n="retake">Re-record</button>
-      <button class="btn" id="send" data-i18n="send">Send wish</button>
+  <section id="s-review" class="screen">
+    <video id="playback" class="window" playsinline></video>
+    <button id="play" class="glass play" aria-label="Play"></button>
+    <div class="pair">
+      <button class="glass pbtn" id="retake" data-i18n="retake">Re-record</button>
+      <button class="glass pbtn gold" id="send" data-i18n="send">Send wish</button>
     </div>
   </section>
 
-  <section id="s-sending" class="screen paper">
-    <div class="center">
-      <p class="small" data-i18n="saving">Saving your wish</p>
+  <section id="s-sending" class="screen">
+    <div class="glass card">
+      <p class="small light" data-i18n="saving">Saving your wish</p>
       <div class="progress"><b id="progress"></b></div>
       <div id="send-error" hidden>
         <p class="note" id="send-error-text"></p>
-        <button class="btn" id="retry" data-i18n="tryAgain">Try again</button>
+        <button class="glass pbtn gold" id="retry" data-i18n="tryAgain">Try again</button>
       </div>
     </div>
   </section>
 
-  <section id="s-thanks" class="screen paper">
-    <div class="center">
+  <section id="s-thanks" class="screen">
+    <div class="glass card">
       <div class="heart">&#9825;</div>
       <h2 class="title" id="thanks-title" data-i18n="thanks">Thank you</h2>
       <div class="rule"></div>
-      <p class="small" id="thanks-note">Your wish has been saved</p>
+      <p class="small light" id="thanks-note">Your wish has been saved</p>
     </div>
   </section>
 

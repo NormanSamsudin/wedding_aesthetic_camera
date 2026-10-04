@@ -79,6 +79,7 @@ Every wedding (or any occasion) is an **event** with its own folder. The booth w
 Open **`/settings`** on the booth (for example `http://localhost:3000/settings`), or hold the names on the booth's welcome screen for three seconds. There you can:
 
 - create an event with its names, date, line above the names, accent colour, longest wish length, booth language (Bahasa Melayu or English) and the ideas shown while guests record (creating one also selects it),
+- give the event a **background photo**, shown behind every booth screen (dimmed with a slider so the names stay readable). Without one, the booth uses a sample garden photo,
 - select which event the booth records into,
 - edit an event,
 - open **Wishes** to watch an event's wishes and hide any you don't want in the gallery (the video stays in the folder, and you can show it again),
@@ -93,6 +94,7 @@ WishBooth/                              (or events/ in this folder on a laptop)
   aisyah-norman-12-12-2026/
     event.json                          names, date, colour, max length
     index.json                          time and length of every wish
+    background.jpg                      the booth's background photo, if uploaded
     2026-12-12_20-14-05_wish_3f2a.mp4   the video (or .webm on older Android Chrome)
     2026-12-12_20-14-05_wish_3f2a.jpg   still frame for the gallery
 ```
