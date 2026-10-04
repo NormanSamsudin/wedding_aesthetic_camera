@@ -6,33 +6,35 @@ const NEW_FOR_MS = 15 * 60_000;
 const BOOTH_IDLE_MS = 2 * 60_000;
 
 let wishes = []; // newest first
+let event = null; // the event whose wishes are showing
 
-const media = (file) => `/media/${encodeURIComponent(file)}`;
+// ?event=<id> looks back at another event; otherwise the selected one.
+const pinned = new URLSearchParams(location.search).get('event');
+const media = (file) => `/media/${encodeURIComponent(event.id)}/${encodeURIComponent(file)}`;
 const clock = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
 const when = (w) => clock(new Date(w.createdAt));
 
 // ---------- data ----------
 
 async function load() {
-  const res = await fetch('/api/wishes', { cache: 'no-store' });
+  const query = pinned ? `?event=${encodeURIComponent(pinned)}` : '';
+  const res = await fetch(`/api/wishes${query}`, { cache: 'no-store' });
   if (res.status === 401) {
     $('#pin').hidden = false;
     $('#pin-input').focus();
     return false;
   }
   const next = await res.json();
-  const changed = next.map((w) => w.id).join() !== wishes.map((w) => w.id).join();
-  wishes = next;
+  const sameEvent = next.event?.id === event?.id;
+  const changed = !sameEvent || next.wishes.map((w) => w.id).join() !== wishes.map((w) => w.id).join();
+  event = next.event;
+  wishes = event ? next.wishes : [];
+  if (!sameEvent) {
+    $('#logo').textContent = event?.couple || '';
+    document.title = event ? `Wishes for ${event.couple}` : 'Wishes';
+  }
   if (changed) render();
   return true;
-}
-
-async function loadConfig() {
-  try {
-    const c = await (await fetch('/api/config')).json();
-    $('#logo').textContent = c.couple;
-    document.title = `Wishes for ${c.couple}`;
-  } catch {}
 }
 
 // ---------- rendering ----------
@@ -312,5 +314,4 @@ function backSoon() {
 ['pointerdown', 'scroll', 'keydown'].forEach((e) => addEventListener(e, backSoon, { passive: true }));
 backSoon();
 
-loadConfig();
 start();

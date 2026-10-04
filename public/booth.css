@@ -89,8 +89,11 @@ body.live .frame { opacity: 1; }
   background: var(--ink);
   color: var(--bg);
   cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
 }
 #s-welcome .btn { margin-top: 40px; }
+#s-no-event .btn { margin-top: 28px; }
 .link {
   margin-top: 22px;
   background: none;

@@ -19,16 +19,15 @@ cd wedding_aesthetic_camera
 npm install
 ```
 
-Edit `config.json`:
+Optionally edit `config.json`:
 
 | Setting | What it does |
 | --- | --- |
-| `couple` | Names on the booth and gallery, e.g. `"Aisyah & Norman"`. The `&` is drawn in the accent colour. |
-| `date` | Shown under the names on the welcome screen. |
-| `welcomeLine` | Small line above the names. |
-| `accent` | Accent colour, e.g. `"#B08D57"` gold, `"#8A9A7B"` sage, `"#C49A9A"` dusty rose. |
-| `maxSeconds` | Longest a wish can be (default 60). |
+| `dataDir` | Where event folders are saved. Leave `""` for the default (see [Events](#events)). |
+| `welcomeLine`, `accent`, `maxSeconds` | Starting values for new events. |
 | `galleryPin` | Set a PIN to lock the gallery. Leave `""` (the default) so guests can open it from the booth without a PIN. |
+
+The names, date and colour are set per event in the settings page, not here.
 
 Start it:
 
@@ -45,16 +44,17 @@ Browsers only allow the camera on `https://` pages, so the tablet has to trust y
 1. On the tablet, scan the QR code or open the **setup** address from the terminal (for example `http://192.168.1.20:3000/setup`).
 2. Follow the steps on that page to download and install the certificate (iPad and Android instructions are both there).
 3. Tap **Open the booth**. It should open with no warning. Allow the camera and microphone.
+4. The first time, the booth says **Select an event first**. Tap **Open settings** and create the event (see [Events](#events)).
 
 You only do this once per tablet. If the laptop later joins a different network, the server re-issues its certificate automatically and the tablet keeps trusting it. If you delete the `certs/` folder, repeat the setup.
 
 ## On the wedding day
 
 1. Turn on the laptop hotspot (or router) and connect the tablet to it.
-2. Plug in the laptop, turn off sleep, and run `npm start`.
+2. Plug in the laptop, turn off sleep, and run `npm start`. Check the terminal says *Recording into* the right event.
 3. On the tablet, open the booth from its home-screen icon and lock it to the booth with **Guided Access** (iPad) or **App pinning** (Android). The setup page explains how.
 4. Keep the tablet charging and set its auto-lock to *Never*.
-5. Afterwards, copy the `wishes/` folder to a backup drive.
+5. Afterwards, copy the event's folder to a backup drive.
 
 ## Or run everything on an Android tablet
 
@@ -70,20 +70,33 @@ termux-wake-lock
 npm start
 ```
 
-Set Termux's battery usage to *Unrestricted* so Android doesn't stop it. Afterwards copy the videos to the tablet's Download folder with `cp -r wishes ~/storage/shared/Download/wedding-wishes`.
+Set Termux's battery usage to *Unrestricted* so Android doesn't stop it. Because of `termux-setup-storage`, the event folders are saved in the tablet's shared storage under **WishBooth**, so they show up in the Files app and can be copied to a USB drive or laptop from there.
 
-## Where the wishes go
+## Events
 
-Each wish is saved the moment a guest taps **Send** to `wishes/`:
+Every wedding (or any occasion) is an **event** with its own folder. The booth won't record until an event is selected, so wishes always land in the right folder.
+
+Open **`/settings`** on the booth (for example `http://localhost:3000/settings`), or hold the names on the booth's welcome screen for three seconds. There you can:
+
+- create an event with its names, date, line above the names, accent colour and longest wish length (creating one also selects it),
+- select which event the booth records into,
+- edit an event, or open its wishes.
+
+Each wish is saved to the selected event's folder the moment a guest taps **Send**:
 
 ```
-wishes/
-  2026-12-12_20-14-05_wish_3f2a.mp4   the video (or .webm on older Android Chrome)
-  2026-12-12_20-14-05_wish_3f2a.jpg   still frame for the gallery
-  index.json                           time and length of every wish
+WishBooth/                              (or events/ in this folder on a laptop)
+  active.json                           which event the booth records into
+  aisyah-norman-12-12-2026/
+    event.json                          names, date, colour, max length
+    index.json                          time and length of every wish
+    2026-12-12_20-14-05_wish_3f2a.mp4   the video (or .webm on older Android Chrome)
+    2026-12-12_20-14-05_wish_3f2a.jpg   still frame for the gallery
 ```
 
-To keep the videos, copy the `wishes/` folder from the laptop.
+The folder is `~/storage/shared/WishBooth` on a tablet running Termux (after `termux-setup-storage`), otherwise `events/` next to `server.js`. Set `dataDir` in `config.json` to put it somewhere else. The settings page and the terminal both show the full path. To keep the videos, copy the event's folder.
+
+The gallery shows the selected event. To look back at another event, tap **Wishes** next to it in settings.
 
 ## Good to know
 
@@ -92,4 +105,4 @@ To keep the videos, copy the `wishes/` folder from the laptop.
 - The booth goes back to the welcome screen if a guest leaves the review screen for a minute, and after each thank-you screen.
 - Guests can tap **Watch the wishes** on the booth's welcome screen to browse the gallery, and **Start recording** to go straight back into the countdown. The gallery opens inside the booth page, so the tablet stays full screen and the camera stays on. It returns to the booth by itself after two minutes without a touch (unless a wish is playing).
 - Gallery sessions: Morning 5 am to 12 pm, Afternoon 12 pm to 5 pm, Evening 5 pm to 9 pm, Night 9 pm to 5 am (a 1 am wish counts as the night before). Change them in `SESSIONS` at the top of `public/gallery/gallery.js`.
-- `wishes/` and `certs/` are in `.gitignore`, so guest videos and your private key are never committed.
+- `events/`, `wishes/` and `certs/` are in `.gitignore`, so guest videos and your private key are never committed. Wishes recorded before events existed stay in `wishes/` and aren't shown in the gallery.
