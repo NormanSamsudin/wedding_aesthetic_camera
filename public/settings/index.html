@@ -68,6 +68,8 @@
       -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
     input[type=range] { padding: 0; accent-color: var(--accent); max-width: 440px; }
     .top .spacer { flex: 1; }
+    .cam { display: grid; gap: 14px; }
+    .cam video { width: min(100%, 440px); aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; background: #111; transform: scaleX(-1); }
   </style>
 </head>
 <body>
@@ -138,6 +140,18 @@
     </div>
   </form>
 
+  <h2>Camera</h2>
+  <div class="card cam">
+    <p class="meta" id="cam-state">Pick the camera and microphone the booth records with. A USB webcam is used automatically when it's plugged in.</p>
+    <div class="actions"><button type="button" class="small-btn" id="cam-check">Show cameras</button></div>
+    <div class="row" id="cam-pick" hidden>
+      <label>Camera<select id="cam-video"></select></label>
+      <label>Microphone<select id="cam-audio"></select></label>
+    </div>
+    <video id="cam-preview" autoplay muted playsinline hidden></video>
+    <p class="hint">Saved on this tablet only. The booth switches camera on its welcome screen when a webcam is plugged in or out.</p>
+  </div>
+
   <h2>Storage</h2>
   <div class="card" id="storage"></div>
 
@@ -164,6 +178,7 @@
     <a href="/">Back to the booth</a>
   </form>
 </div>
+<script src="/camera.js"></script>
 <script>
   const $ = (s) => document.querySelector(s);
   let state = { events: [], active: null, defaults: {} };
@@ -438,6 +453,57 @@
     stopEdit();
     load();
   };
+
+  // ---------- camera ----------
+  let camStream = null;
+  const cam = window.boothCamera;
+
+  function fillSelect(el, list, saved, autoText) {
+    el.textContent = '';
+    el.append(new Option(autoText, ''));
+    list.forEach((d, i) => el.append(new Option(d.label || `Device ${i + 1}`, d.deviceId)));
+    const match = saved && (list.find((d) => d.deviceId === saved.id) || list.find((d) => d.label === saved.label));
+    el.value = match ? match.deviceId : '';
+  }
+
+  async function showCameras() {
+    try {
+      camStream?.getTracks().forEach((t) => t.stop());
+      camStream = await cam.open();
+    } catch (err) {
+      $('#cam-state').textContent = err.name === 'NotAllowedError'
+        ? 'Camera permission was denied. Allow the camera for this site in Chrome, then try again.'
+        : `The camera could not start (${err.name}).`;
+      return;
+    }
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videos = devices.filter((d) => d.kind === 'videoinput');
+    const audios = devices.filter((d) => d.kind === 'audioinput');
+    const prefs = cam.load();
+    const webcam = videos.find(cam.isExternal);
+    fillSelect($('#cam-video'), videos, prefs.video, webcam ? `Auto (USB webcam: ${webcam.label})` : 'Auto (front camera)');
+    fillSelect($('#cam-audio'), audios, prefs.audio, 'Auto');
+    $('#cam-state').textContent = webcam
+      ? `USB webcam found: ${webcam.label}.`
+      : `No USB webcam found. Chrome sees ${videos.length} camera${videos.length === 1 ? '' : 's'}: ${videos.map((d) => d.label).join(', ') || 'none'}. If the webcam is plugged in, this phone's Android doesn't let Chrome use it.`;
+    $('#cam-pick').hidden = false;
+    $('#cam-preview').hidden = false;
+    $('#cam-preview').srcObject = camStream;
+    $('#cam-check').textContent = 'Refresh';
+  }
+
+  function pickDevice(kind, el) {
+    const prefs = cam.load();
+    const opt = el.selectedOptions[0];
+    prefs[kind] = el.value ? { id: el.value, label: opt.textContent } : null;
+    cam.save(prefs);
+    showCameras();
+  }
+
+  $('#cam-check').onclick = showCameras;
+  $('#cam-video').onchange = (e) => pickDevice('video', e.target);
+  $('#cam-audio').onchange = (e) => pickDevice('audio', e.target);
+  navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (camStream) showCameras(); });
 
   load();
 </script>

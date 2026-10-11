@@ -53,6 +53,7 @@ async function reset() {
 // Nothing can be recorded until an event is selected in /settings.
 function showHome() {
   show(state.config.event ? 'welcome' : 'no-event');
+  if (cameraChanged) restartCamera();
 }
 
 // ---------- config & text ----------
@@ -159,11 +160,10 @@ async function startCamera() {
     return false;
   }
   try {
-    state.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
+    state.stream = await window.boothCamera.open();
     $('#preview').srcObject = state.stream;
+    // A webcam pulled out mid-event ends its track; switch back to a camera that works.
+    state.stream.getVideoTracks()[0]?.addEventListener('ended', () => restartCamera());
     return true;
   } catch (err) {
     blocked(
@@ -174,6 +174,27 @@ async function startCamera() {
     return false;
   }
 }
+
+// Re-pick the camera when a webcam is plugged in or out, but only while no
+// guest is in the middle of a wish.
+let restarting = false;
+let cameraChanged = false;
+async function restartCamera() {
+  const idle = document.querySelector('#s-welcome.active, #s-no-event.active');
+  if (!idle) {
+    cameraChanged = true; // showHome() picks this up when the guest is done.
+    return;
+  }
+  if (restarting) return;
+  restarting = true;
+  cameraChanged = false;
+  state.stream?.getTracks().forEach((t) => t.stop());
+  await startCamera();
+  restarting = false;
+  if (document.querySelector('#s-blocked.active')) return;
+  showHome();
+}
+navigator.mediaDevices?.addEventListener?.('devicechange', restartCamera);
 
 function blocked(reason) {
   $('#blocked-reason').textContent = reason;
